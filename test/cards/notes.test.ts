@@ -192,6 +192,83 @@ describe('carte notes', () => {
     expect(t).not.toContain('pas encore collectée');
   });
 
+  it('montre les notes les plus récentes par date, quel que soit l’ordre reçu', async () => {
+    // L'intégration garde l'ordre du serveur (`listeDevoirs`), qui n'est pas
+    // chronologique : `latestFirst` seul aurait pris la dernière reçue.
+    const hass = makeHass([
+      {
+        key: 'sensor:grades',
+        entity_id: 'sensor.abc_notes',
+        device: 'dev_enfant',
+        state: '2',
+        attributes: {
+          items: [
+            { subject: 'Anglais', value: 12, out_of: 20, date: '2026-09-06' },
+            { subject: 'Maths', value: 14.5, out_of: 20, date: '2026-09-02' },
+          ],
+        },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], limit: 1 },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('Anglais');
+    expect(t).not.toContain('Maths');
+  });
+
+  it('dit « pas encore collectée », pas « aucune note », quand la section voulue n’est pas collectée', async () => {
+    // Une seule ancre exploitable suffit au socle pour rendre la carte : ici
+    // les moyennes par matière. La section « dernières notes » dépend des
+    // notes, qui ne sont pas encore collectées : le vide serait un mensonge.
+    const hass = makeHass([
+      {
+        key: 'sensor:grades',
+        entity_id: 'sensor.abc_notes',
+        device: 'dev_enfant',
+        state: 'unknown',
+        attributes: {},
+      },
+      {
+        key: 'sensor:averages',
+        entity_id: 'sensor.abc_moyennes_par_matiere',
+        device: 'dev_enfant',
+        state: '0',
+        attributes: { items: [] },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('pas encore collectée');
+    expect(t).not.toContain('Aucune note');
+  });
+
+  it('dit « introuvable » quand la section voulue n’a pas d’entité au registre', async () => {
+    const hass = makeHass([
+      {
+        key: 'sensor:averages',
+        entity_id: 'sensor.abc_moyennes_par_matiere',
+        device: 'dev_enfant',
+        state: '0',
+        attributes: { items: [] },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('sensor:grades');
+    expect(t).not.toContain('Aucune note');
+  });
+
   it('dit « pas encore collectée » quand tout est indisponible', async () => {
     const hass = makeHass([
       {
@@ -382,5 +459,152 @@ describe('carte notes', () => {
     const t = text(el);
     expect(t).toContain('Dernière note');
     expect(t).toContain('Non rendu');
+  });
+});
+
+describe('carte notes — la date des notes et le filtre par matière', () => {
+  // Les deux notes de `grades` : Maths le 5 septembre 2026 (un samedi),
+  // Anglais le 6 (un dimanche). `date` est une date SEULE, comme
+  // l'intégration la publie.
+  it('affiche la date de chaque note quand show_date est activé', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], show_date: true },
+      base()
+    );
+    const t = text(el);
+    expect(t).toContain('samedi 5 septembre');
+    expect(t).toContain('dimanche 6 septembre');
+    // Le coefficient reste, la date s'y ajoute.
+    expect(t).toContain('coef. 2');
+  });
+
+  it('n’affiche pas la date par défaut, pour ne rien changer aux cartes existantes', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      base()
+    );
+    const t = text(el);
+    expect(t).toContain('14,5/20');
+    expect(t).not.toContain('5 septembre');
+  });
+
+  it('date la note au jour écrit, même dans un fuseau à décalage négatif', async () => {
+    const hass = base();
+    hass.config = { time_zone: 'America/Martinique' };
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], show_date: true },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('samedi 5 septembre');
+    expect(t).not.toContain('vendredi 4 septembre');
+  });
+
+  it('ne montre que les matières choisies, dans les notes comme dans les moyennes', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      {
+        device_id: 'dev_enfant',
+        sections: ['average', 'latest', 'subjects'],
+        subjects: ['Anglais'],
+      },
+      base()
+    );
+    const t = text(el);
+    expect(t).toContain('Anglais');
+    expect(t).toContain('12/20');
+    expect(t).not.toContain('Maths');
+    // La moyenne générale n'est pas une matière : le filtre ne la touche pas.
+    expect(t).toContain('13,5');
+  });
+
+  it('compare les matières sans casse, sans accents ni espaces de bord', async () => {
+    // PRONOTE écrit souvent les matières en capitales et avec accents :
+    // personne ne devrait avoir à recopier « MATHÉMATIQUES » à l'identique.
+    const hass = makeHass([
+      {
+        key: 'sensor:grades',
+        entity_id: 'sensor.abc_notes',
+        device: 'dev_enfant',
+        state: '2',
+        attributes: {
+          items: [
+            { subject: 'MATHÉMATIQUES', value: 16, out_of: 20, date: '2026-09-11' },
+            { subject: 'ANGLAIS LV1', value: 7, out_of: 10, date: '2026-09-15' },
+          ],
+        },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], subjects: ['  mathematiques '] },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('MATHÉMATIQUES');
+    expect(t).not.toContain('ANGLAIS');
+  });
+
+  it('filtre aussi le bulletin', async () => {
+    const hass = makeHass([
+      {
+        key: 'sensor:overall_average',
+        entity_id: 'sensor.abc_moyenne_generale',
+        device: 'dev_enfant',
+        state: '13.5',
+        attributes: { out_of: 20 },
+      },
+      {
+        key: 'sensor:report_card',
+        entity_id: 'sensor.abc_bulletin',
+        device: 'dev_enfant',
+        state: '2',
+        attributes: {
+          subjects: [
+            { name: 'Mathématiques', student_average: 14.5 },
+            { name: 'Anglais', student_average: 16 },
+          ],
+        },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['report_card'], subjects: ['anglais'] },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('Anglais');
+    expect(t).not.toContain('Mathématiques');
+  });
+
+  it('dit que le filtre écarte tout, plutôt que « aucune note »', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], subjects: ['Physique'] },
+      base()
+    );
+    const t = text(el);
+    expect(t).toContain('Aucune note pour les matières choisies');
+    expect(t).not.toContain('Aucune note pour cette période');
+  });
+
+  it('traite une liste de matières vide comme « toutes les matières »', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], subjects: [] },
+      base()
+    );
+    const t = text(el);
+    expect(t).toContain('Maths');
+    expect(t).toContain('Anglais');
+  });
+
+  it('propose les deux options dans l’éditeur', () => {
+    const noms = SPEC.schema({ type: 'x' }).map((f) => f.name);
+    expect(noms).toContain('show_date');
+    expect(noms).toContain('subjects');
   });
 });

@@ -39,6 +39,27 @@ describe('carte eleve', () => {
     expect(t).toContain('4e B');
   });
 
+  it('donne le jour du prochain cours quand il n’a pas lieu aujourd’hui', async () => {
+    // Un vendredi soir, « Maths à 08:30 » désignait le lundi.
+    const el = await mountCard(
+      'carnet-scolaire-eleve',
+      { device_id: 'dev_enfant' },
+      base({}, '4e B', [
+        {
+          key: 'sensor:next_lesson',
+          entity_id: 'sensor.abc_prochain_cours',
+          device: 'dev_enfant',
+          state: '2099-01-05T08:30:00+01:00',
+          attributes: { subject: 'Maths' },
+        },
+      ])
+    );
+    const t = text(el);
+    expect(t).toContain('Maths');
+    expect(t).toContain('08:30');
+    expect(t).toContain('5 janvier');
+  });
+
   it("n'affiche pas l'établissement par défaut", async () => {
     const el = await mountCard(
       'carnet-scolaire-eleve',
@@ -46,6 +67,8 @@ describe('carte eleve', () => {
       base({ establishment: 'Établissement synthétique' })
     );
     expect(text(el)).not.toContain('Établissement synthétique');
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('4e B');
   });
 
   it("affiche l'établissement uniquement si l'option est activée", async () => {
@@ -125,6 +148,8 @@ describe('carte eleve', () => {
     // affirmer « Pas de cours aujourd'hui » : elle tait ce qu'elle ignore.
     const el = await mountCard('carnet-scolaire-eleve', { device_id: 'dev_enfant' }, base());
     expect(el.shadowRoot?.querySelector('.chip')).toBeNull();
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('4e B');
   });
 
   it("rend la pastille d'état dès qu'un seul des trois capteurs binaires est résolu", async () => {
@@ -159,6 +184,8 @@ describe('carte eleve', () => {
       ])
     );
     expect(el.shadowRoot?.querySelector('img.photo')).toBeNull();
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('Enfant');
   });
 
   it("affiche l'entity_picture de l'entité image uniquement si show_photo est activé", async () => {
@@ -214,5 +241,7 @@ describe('carte eleve', () => {
       ])
     );
     expect(el.shadowRoot?.querySelector('img.photo')).toBeNull();
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('Enfant');
   });
 });

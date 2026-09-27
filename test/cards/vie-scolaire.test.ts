@@ -15,6 +15,11 @@ beforeAll(() => {
   defineCard(SPEC);
 });
 
+// Les formes RÉELLES (`_absence_dict`, `_delay_dict` côté intégration) :
+// `from_date`, `to_date` et `date` sont des horodatages complets, et `hours`
+// est la CHAÎNE que PRONOTE écrit (« 2h00 »), jamais un nombre. Les anciennes
+// fixtures écrivaient des dates seules et `hours: 2`, et laissaient donc sans
+// test la branche que les vraies données traversent.
 const full = () =>
   makeHass([
     {
@@ -23,7 +28,7 @@ const full = () =>
       device: 'dev_enfant',
       state: '1',
       attributes: {
-        items: [{ from_date: '2026-09-01', to_date: '2026-09-01', hours: 2, justified: false }],
+        items: [{ from_date: '2026-09-01T08:00:00+02:00', to_date: '2026-09-01T10:00:00+02:00', hours: '2h00', justified: false }],
       },
     },
     {
@@ -31,7 +36,7 @@ const full = () =>
       entity_id: 'sensor.abc_retards',
       device: 'dev_enfant',
       state: '1',
-      attributes: { items: [{ date: '2026-09-02', minutes: 10, justified: true }] },
+      attributes: { items: [{ date: '2026-09-02T08:10:00+02:00', minutes: 10, justified: true }] },
     },
     {
       key: 'sensor:punishments',
@@ -90,8 +95,8 @@ describe('carte vie-scolaire', () => {
         state: '2',
         attributes: {
           items: [
-            { from_date: '2026-09-01', to_date: '2026-09-01', hours: 2, justified: false },
-            { from_date: '2026-09-05', to_date: '2026-09-05', hours: 1, justified: true },
+            { from_date: '2026-09-01T08:00:00+02:00', to_date: '2026-09-01T10:00:00+02:00', hours: '2h00', justified: false },
+            { from_date: '2026-09-05T08:00:00+02:00', to_date: '2026-09-05T09:00:00+02:00', hours: '1h00', justified: true },
           ],
         },
       },
@@ -244,9 +249,9 @@ describe('carte vie-scolaire', () => {
           // en tête — pour vérifier que la carte trie elle-même sur la
           // date avant de choisir l'ordre d'affichage.
           items: [
-            { from_date: '2026-09-03', to_date: '2026-09-03', hours: 1, justified: true },
-            { from_date: '2026-09-01', to_date: '2026-09-01', hours: 2, justified: false },
-            { from_date: '2026-09-05', to_date: '2026-09-05', hours: 3, justified: true },
+            { from_date: '2026-09-03T08:00:00+02:00', to_date: '2026-09-03T09:00:00+02:00', hours: '1h00', justified: true },
+            { from_date: '2026-09-01T08:00:00+02:00', to_date: '2026-09-01T10:00:00+02:00', hours: '2h00', justified: false },
+            { from_date: '2026-09-05T08:00:00+02:00', to_date: '2026-09-05T11:00:00+02:00', hours: '3h00', justified: true },
           ],
         },
       },
@@ -257,9 +262,9 @@ describe('carte vie-scolaire', () => {
         state: '3',
         attributes: {
           items: [
-            { date: '2026-09-02', minutes: 5, justified: true },
-            { date: '2026-09-10', minutes: 15, justified: false },
-            { date: '2026-09-06', minutes: 10, justified: true },
+            { date: '2026-09-02T08:10:00+02:00', minutes: 5, justified: true },
+            { date: '2026-09-10T08:10:00+02:00', minutes: 15, justified: false },
+            { date: '2026-09-06T08:10:00+02:00', minutes: 10, justified: true },
           ],
         },
       },
@@ -292,7 +297,7 @@ describe('carte vie-scolaire', () => {
         device: 'dev_enfant',
         state: '1',
         attributes: {
-          items: [{ from_date: '2026-09-01', to_date: '2026-09-01', hours: 2, justified: false }],
+          items: [{ from_date: '2026-09-01T08:00:00+02:00', to_date: '2026-09-01T10:00:00+02:00', hours: '2h00', justified: false }],
         },
       },
     ]);
@@ -392,7 +397,7 @@ describe('carte vie-scolaire', () => {
         device: 'dev_enfant',
         state: '1',
         attributes: {
-          items: [{ from_date: '2026-09-01', to_date: '2026-09-01', hours: 2, justified: false }],
+          items: [{ from_date: '2026-09-01T08:00:00+02:00', to_date: '2026-09-01T10:00:00+02:00', hours: '2h00', justified: false }],
         },
       },
       {
@@ -400,7 +405,7 @@ describe('carte vie-scolaire', () => {
         entity_id: 'sensor.abc_retards',
         device: 'dev_enfant',
         state: '1',
-        attributes: { items: [{ date: '2026-09-02', minutes: 10, justified: false }] },
+        attributes: { items: [{ date: '2026-09-02T08:10:00+02:00', minutes: 10, justified: false }] },
       },
     ]);
     const el = await mountCard('carnet-scolaire-vie-scolaire', { device_id: 'dev_enfant' }, hass);
@@ -500,6 +505,61 @@ describe('carte vie-scolaire', () => {
     expect(t).toContain('MALADIE SANS CERTIFICAT');
   });
 
+  it('détaille les absences non justifiées quand elles sont seules publiées, sans dire « Rien à signaler »', async () => {
+    // Cas prévu par `requiresAny` : seul `sensor:unjustified_absences` existe.
+    // Le détail n'était lu que sur `sensor:absences`, et la carte écrivait
+    // « Rien à signaler » juste sous le compteur « 2 ».
+    const hass = makeHass([
+      {
+        key: 'sensor:unjustified_absences',
+        entity_id: 'sensor.abc_absences_non_justifiees',
+        device: 'dev_enfant',
+        state: '1',
+        attributes: {
+          items: [
+            {
+              from_date: '2026-09-01T08:00:00+02:00',
+              to_date: '2026-09-01T10:00:00+02:00',
+              hours: '2h00',
+              justified: false,
+            },
+          ],
+        },
+      },
+    ]);
+    const el = await mountCard('carnet-scolaire-vie-scolaire', { device_id: 'dev_enfant' }, hass);
+    const t = text(el);
+    expect(t).toContain('2h00');
+    expect(t).not.toContain('Rien à signaler');
+  });
+
+  it('dit « pas encore collectée », pas « Rien à signaler », quand la section voulue n’est pas collectée', async () => {
+    const hass = makeHass([
+      {
+        key: 'sensor:delays',
+        entity_id: 'sensor.abc_retards',
+        device: 'dev_enfant',
+        state: 'unknown',
+        attributes: {},
+      },
+      {
+        key: 'sensor:absences',
+        entity_id: 'sensor.abc_absences',
+        device: 'dev_enfant',
+        state: '0',
+        attributes: { items: [] },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-vie-scolaire',
+      { device_id: 'dev_enfant', sections: ['delays'] },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('pas encore collectée');
+    expect(t).not.toContain('Rien à signaler');
+  });
+
   it('accepte encore un nombre d’heures, converti en durée', async () => {
     const hass = makeHass([
       {
@@ -508,7 +568,7 @@ describe('carte vie-scolaire', () => {
         device: 'dev_enfant',
         state: '1',
         attributes: {
-          items: [{ from_date: '2026-09-01', to_date: '2026-09-01', hours: 2, justified: false }],
+          items: [{ from_date: '2026-09-01T08:00:00+02:00', to_date: '2026-09-01T10:00:00+02:00', hours: 2, justified: false }],
         },
       },
     ]);

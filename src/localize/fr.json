@@ -111,7 +111,11 @@
     "limit": "Nombre maximum de notes",
     "section_report_card": "Bulletin",
     "period": "Période",
-    "latest_grade": "Dernière note"
+    "latest_grade": "Dernière note",
+    "show_date": "Afficher la date des notes",
+    "subjects": "Matières affichées",
+    "subjects_helper": "Laissez vide pour toutes les matières. La casse et les accents ne comptent pas.",
+    "empty_filtered": "Aucune note pour les matières choisies."
   },
   "emploi_du_temps": {
     "name": "Emploi du temps",
@@ -123,6 +127,7 @@
     "canceled": "annulé",
     "test": "contrôle",
     "outing": "sortie",
+    "exempted": "dispensé",
     "current": "en cours",
     "show_rooms": "Afficher les salles",
     "show_teachers": "Afficher les professeurs"
@@ -198,6 +203,7 @@
     "canceled": "annulé",
     "test": "contrôle",
     "outing": "sortie",
+    "exempted": "dispensé",
     "show_meal": "Afficher la zone repas",
     "meal_label": "Libellé de la zone repas",
     "meal_from": "Début de la plage du midi (HH:MM)",

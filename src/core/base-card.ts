@@ -2,6 +2,7 @@ import { LitElement, html, nothing, type PropertyValues, type TemplateResult } f
 import { property, state } from 'lit/decorators.js';
 import type { HassEntity, HomeAssistant } from './ha-types';
 import { createResolveCache, resolveDevice } from './resolve';
+import { dropDanglingOverrides } from './overrides';
 import type {
   AllowedCall,
   AllowedResponseCall,
@@ -15,6 +16,7 @@ import type {
 import { sharedStyles } from './ui/styles';
 import { errorState, missingState, unavailableState } from './ui/parts';
 import { localize } from '../localize';
+import { dateTimeFormat } from './intl';
 
 /** Un boost est plafonné à un par palier et par intervalle côté intégration. */
 export const REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
@@ -78,9 +80,13 @@ export function resolveTimeZone(hass: {
   locale?: { time_zone?: string };
   config?: { time_zone?: string };
 }): string {
+  // Le formateur vient du cache (voir `intl.ts`) : le fuseau du navigateur
+  // est donc lu une fois par chargement de page. Un ordinateur qui change de
+  // fuseau en cours de session garde l'ancien jusqu'au rechargement, ce que
+  // fait aussi le reste du frontal de Home Assistant.
   const browser = ((): string => {
     try {
-      return new Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return dateTimeFormat(undefined).resolvedOptions().timeZone;
     } catch {
       return 'UTC';
     }
@@ -97,13 +103,33 @@ export function resolveTimeZone(hass: {
   return usable(candidate) ? candidate : usable(browser) ? browser : 'UTC';
 }
 
+/**
+ * Les réglages d'affichage qui changent le rendu sans changer aucun état :
+ * la langue, la préférence de fuseau et le fuseau de l'instance. Lus sur une
+ * valeur non typée, parce que l'ancien `hass` de `shouldUpdate` en est une.
+ */
+const champ = (o: unknown, k: string): unknown =>
+  typeof o === 'object' && o !== null ? (Reflect.get(o, k) as unknown) : undefined;
+
+function settingsOf(hass: object): {
+  language: unknown;
+  localeZone: unknown;
+  serverZone: unknown;
+} {
+  return {
+    language: champ(hass, 'language'),
+    localeZone: champ(champ(hass, 'locale'), 'time_zone'),
+    serverZone: champ(champ(hass, 'config'), 'time_zone'),
+  };
+}
+
 function usable(timeZone: string | undefined): timeZone is string {
   if (!timeZone) return false;
   try {
     // Le constructeur est le seul validateur disponible : `Intl` n'expose
     // aucun « ce fuseau existe-t-il ». On garde sa sortie pour que la règle
     // no-new ne voie pas une construction pour effet de bord.
-    const probe = new Intl.DateTimeFormat('en', { timeZone });
+    const probe = dateTimeFormat('en', { timeZone });
     return probe.resolvedOptions().timeZone !== undefined;
   } catch {
     return false;
@@ -288,6 +314,20 @@ export function makeCardClass(spec: CardSpec): CustomElementConstructor {
         return true;
       }
       if (oldHass.entities !== hass.entities || oldHass.devices !== hass.devices) return true;
+      // La langue et le fuseau alimentent `ctx.t`, `ctx.language` et
+      // `ctx.timeZone` : les changer dans son profil, sans qu'aucun état
+      // bouge, laissait la carte dans l'ancienne langue et les anciennes
+      // heures. On compare les VALEURS, pas les objets, pour ne pas repeindre
+      // à chaque évènement de la maison si le frontal recrée `locale`.
+      const before = settingsOf(oldHass);
+      const now = settingsOf(hass);
+      if (
+        before.language !== now.language ||
+        before.localeZone !== now.localeZone ||
+        before.serverZone !== now.serverZone
+      ) {
+        return true;
+      }
       const oldStates = oldHass.states;
       for (const id of this.resolved.values()) {
         if (oldStates[id] !== hass.states[id]) return true;
@@ -319,6 +359,9 @@ export function makeCardClass(spec: CardSpec): CustomElementConstructor {
 
       const { required, any, all } = this.entityKeys(config);
       this.resolved = this.resolveAll(hass, config, all);
+      // Une surcharge qui ne désigne rien tombe en « introuvable » : voir
+      // `dropDanglingOverrides`.
+      this.resolved = dropDanglingOverrides(hass, this.resolved, config.entities);
 
       // État 1 — entité absente du registre pour cet appareil.
       const missingRequired = required.filter((k) => !this.resolved.has(k));
@@ -329,14 +372,23 @@ export function makeCardClass(spec: CardSpec): CustomElementConstructor {
       }
 
       // État 2 — entité présente, état non collecté. Transitoire, pas une erreur.
-      const anchors = any.length > 0 ? any.filter((k) => this.resolved.has(k)) : required;
-      const hasUsable = anchors.some((k) => {
+      //
+      // TOUTES les clés requises doivent être exploitables, plus au moins une
+      // des ancres de `requiresAny`. Le socle ne vérifiait qu'UNE ancre, prise
+      // dans `requiresAny` dès qu'il existait : une seconde clé requise à
+      // `unknown` arrivait alors jusqu'au rendu, où la carte pouvait
+      // l'afficher comme une valeur.
+      const exploitable = (k: EntityKey): boolean => {
         const e = this.entityFor(k);
         return e !== undefined && !ABSENT_STATES.has(e.state);
-      });
+      };
+      const resolvedAny = any.filter((k) => this.resolved.has(k));
+      const hasUsable =
+        required.every(exploitable) &&
+        (resolvedAny.length === 0 || resolvedAny.some(exploitable));
       // `attributeDriven` rend la main à la carte plutôt que d'afficher « pas
-      // encore collectée » : voir CardSpec, la cantine est le seul cas.
-      if (anchors.length > 0 && !hasUsable && spec.attributeDriven !== true) {
+      // encore collectée » : voir CardSpec (la cantine et le prochain cours).
+      if (!hasUsable && spec.attributeDriven !== true) {
         return this.frame(unavailableState(this.t));
       }
 

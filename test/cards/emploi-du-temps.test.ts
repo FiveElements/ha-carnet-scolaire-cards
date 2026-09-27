@@ -433,6 +433,19 @@ describe('carte emploi-du-temps', () => {
     expect(text(el)).toContain('en cours');
   });
 
+  it('dit « dispensé » sur un créneau dont l’élève est dispensé, sans le dire « en cours »', async () => {
+    testClock.now = '2026-09-08T08:30:00+02:00';
+    const el = await mountCard(
+      'carnet-scolaire-emploi-du-temps',
+      { device_id: 'dev_enfant' },
+      day({ lessons: lessons.map((l) => (l.subject === 'Maths' ? { ...l, exempted: true } : l)) })
+    );
+    const t = text(el);
+    expect(t).toContain('Maths');
+    expect(t).toContain('dispensé');
+    expect(t).not.toContain('en cours');
+  });
+
   it('ne surligne aucun créneau quand `in_class` vaut `off`, même à une heure de cours', async () => {
     testClock.now = '2026-09-08T08:30:00+02:00';
     const el = await mountCard(

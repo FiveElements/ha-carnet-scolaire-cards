@@ -25,6 +25,8 @@ sections:
 | --- | --- | --- |
 | `sections` | `average`, `latest`, `subjects` | Blocs affichés, dans cet ordre : `average` (moyenne de l'élève et de la classe), `latest` (dernières notes), `subjects` (moyennes par matière), `report_card` (bulletin). |
 | `limit` | `8` | Nombre de dernières notes affichées. |
+| `show_date` | désactivée | Ajoute la date de chaque note aux dernières notes, après le coefficient. |
+| `subjects` | toutes | Matières montrées dans les dernières notes, les moyennes par matière et le bulletin. Voir plus bas. |
 | `subject_colors` | — | Table matière → couleur. **En YAML uniquement**, voir plus bas. |
 
 `report_card` n'est **pas** dans les valeurs par défaut : le bulletin
@@ -44,6 +46,10 @@ sections:
   - subjects
   - report_card
 limit: 10
+show_date: true
+subjects:
+  - Mathématiques
+  - Anglais
 ```
 
 L'ordre des sections dans le YAML ne change pas l'ordre d'affichage : la
@@ -52,6 +58,23 @@ lesquelles paraissent.
 
 `title` et `entities` fonctionnent en plus sur toutes les cartes : voir
 [Deux options communes](../installation.md#deux-options-communes-a-toutes-les-cartes).
+
+## Filtrer les matières
+
+`subjects` limite la carte aux matières listées. Le nom s'écrit comme
+PRONOTE l'affiche, mais la casse, les accents et les espaces en bord ne
+comptent pas : `mathematiques` retrouve `MATHÉMATIQUES`. C'est la même
+comparaison que pour `subject_colors`.
+
+Le filtre s'applique aux dernières notes, aux moyennes par matière et au
+bulletin. Il ne touche **pas** la moyenne générale ni celle de la classe :
+elles portent sur toutes les matières. Une carte filtrée sur une seule
+matière affiche donc encore la moyenne générale.
+
+Une liste vide revient à ne rien filtrer. Si le filtre écarte toutes les
+notes, la carte affiche « Aucune note pour les matières choisies » plutôt
+que « Aucune note pour cette période » : des notes existent, mais dans
+d'autres matières.
 
 ## Les couleurs de matière
 

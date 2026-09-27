@@ -76,8 +76,9 @@ export function resolveEntities(
 }
 
 /**
- * Cache de résolution partagé entre la carte et son éditeur (voir
- * base-card.ts et editor.ts) : mémoïse `resolveEntities` sur l'identité de
+ * Cache de résolution, un par instance : la carte et son éditeur en créent
+ * chacun un (voir base-card.ts et editor.ts), c'est le MÉCANISME qui est
+ * commun, pas le cache. Il mémoïse `resolveEntities` sur l'identité de
  * `hass.entities` et `hass.devices`, plutôt que de rebalayer tout le
  * registre (`Object.values(hass.entities)`) à chaque mise à jour d'état —
  * Home Assistant remplace tout l'objet `hass` à chaque évènement, mais ces

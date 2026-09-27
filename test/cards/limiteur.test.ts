@@ -53,10 +53,26 @@ describe('carte limiteur', () => {
     expect(t).toContain('marks');
   });
 
+  it('donne le jour d’une suspension qui ne se lève pas aujourd’hui', async () => {
+    // « jusqu'à 06:00 » pour une suspension de plusieurs jours se lisait
+    // comme « ce matin ». Une date lointaine : jamais aujourd'hui.
+    const hass = makeHass([
+      compte('sensor:limiter_state', 'sensor.cpt_etat', 'suspended', {
+        until: '2099-01-05T06:00:00+01:00',
+      }),
+    ]);
+    const el = await mountCard('carnet-scolaire-limiteur', { device_id: 'dev_enfant' }, hass);
+    const t = text(el);
+    expect(t).toContain('06:00');
+    expect(t).toContain('5 janvier');
+  });
+
   it("n'affiche pas les connexions du jour quand l'entité est absente", async () => {
     const hass = makeHass([compte('sensor:limiter_state', 'sensor.cpt_etat', 'nominal')]);
     const el = await mountCard('carnet-scolaire-limiteur', { device_id: 'dev_enfant' }, hass);
     expect(text(el)).not.toContain('Connexions depuis minuit');
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('Nominal');
   });
 
   it('affiche les connexions du jour quand `sensor:logins_today` est résolue', async () => {
@@ -74,6 +90,8 @@ describe('carte limiteur', () => {
     const hass = makeHass([compte('sensor:limiter_state', 'sensor.cpt_etat', 'nominal')]);
     const el = await mountCard('carnet-scolaire-limiteur', { device_id: 'dev_enfant' }, hass);
     expect(text(el)).not.toContain('Âge de la session');
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('Nominal');
   });
 
   it("affiche l'âge de la session mis en forme, dans l'unité que l'entité déclare", async () => {
@@ -119,6 +137,8 @@ describe('carte limiteur', () => {
     const hass = makeHass([compte('sensor:limiter_state', 'sensor.cpt_etat', 'nominal')]);
     const el = await mountCard('carnet-scolaire-limiteur', { device_id: 'dev_enfant' }, hass);
     expect(text(el)).not.toContain('Durée de vie de la session');
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('Nominal');
   });
 
   it('affiche la durée de vie de la session mise en forme (heures) quand `sensor:session_lifetime` est résolue', async () => {
@@ -142,6 +162,8 @@ describe('carte limiteur', () => {
     const hass = makeHass([compte('sensor:limiter_state', 'sensor.cpt_etat', 'nominal')]);
     const el = await mountCard('carnet-scolaire-limiteur', { device_id: 'dev_enfant' }, hass);
     expect(text(el)).not.toContain('Collectes bridées');
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('Nominal');
   });
 
   it('affiche la mention de bridage quand `binary_sensor:throttled` est à `on` et que la pastille ne dit pas déjà `throttled`', async () => {
@@ -198,6 +220,8 @@ describe('carte limiteur', () => {
     const hass = makeHass([compte('sensor:limiter_state', 'sensor.cpt_etat', 'nominal')]);
     const el = await mountCard('carnet-scolaire-limiteur', { device_id: 'dev_enfant' }, hass);
     expect(el.shadowRoot?.querySelector('button')).toBeNull();
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('Nominal');
   });
 
   it('appelle carnet_scolaire.refresh sur clic et non au montage', async () => {

@@ -130,6 +130,12 @@ portez la conséquence.
 La surcharge subit la même vérification de domaine que le chemin
 normal : une clé `sensor:...` ne peut se résoudre qu'à un `sensor.`.
 Un identifiant d'un autre domaine est ignoré, pas accepté sans un mot.
+Et un identifiant qui ne désigne **rien** — ni au registre, ni parmi les
+états, typiquement après un renommage — tombe en « entité introuvable »,
+dans la carte comme dans son éditeur. Jusqu'à la version qui a corrigé ce
+point, il tombait en « pas encore collectée », qui se lit comme une panne
+passagère et ne se résorbait jamais : la phrase ci-dessus était donc vraie
+de l'intention, pas du code.
 
 Si vous n'avez pas besoin de l'épingler dans un tableau de bord,
 consultez la période close directement dans PRONOTE ou dans

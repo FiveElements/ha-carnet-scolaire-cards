@@ -87,16 +87,16 @@ réglage à chercher.
 **Ne vous servez pas de cette carte pour décider si un enfant peut manger un
 plat.** Elle donne l'intitulé du service, rien de plus.
 
-## La seule carte pilotée par ses attributs
+## Une carte pilotée par ses attributs
 
 L'intégration laisse délibérément l'**état** de ces capteurs à
 « inconnu », même quand la collecte a réussi : un nombre de plats à zéro
 affirmerait qu'un menu existe. Le socle écarterait donc normalement la
 carte avec un « pas encore collectée ».
 
-Cette carte porte pour cette raison le seul `attributeDriven` du projet :
-le socle lui rend la main, et elle assume les **deux** phrases, parce
-qu'elle est la seule à pouvoir les distinguer.
+Cette carte porte pour cette raison le drapeau `attributeDriven`, comme le
+prochain cours : le socle lui rend la main, et elle assume les **deux**
+phrases, parce qu'elle est la seule à pouvoir les distinguer.
 
 ## Si la carte est vide
 

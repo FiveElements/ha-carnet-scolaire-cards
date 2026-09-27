@@ -146,6 +146,19 @@ export function subjectColor(value: unknown): string | undefined {
 const fold = (value: string | undefined): string =>
   (value ?? '').normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
 
+/**
+ * Le filtre de matières d'une carte, avec la même comparaison que la table de
+ * couleurs : sans casse, sans accents, sans espaces de bord. Une liste absente
+ * ou vide laisse tout passer.
+ */
+export function subjectFilter(
+  wanted: readonly string[] | undefined
+): (subject: string | undefined) => boolean {
+  const keys = new Set((wanted ?? []).map(fold).filter((k) => k !== ''));
+  if (keys.size === 0) return () => true;
+  return (subject) => keys.has(fold(subject));
+}
+
 export function subjectAccent(
   published: unknown,
   subject: string | undefined,

@@ -326,6 +326,14 @@ export const sharedStyles = css`
     border-left: 3px solid var(--pronote-subject-color, transparent);
     padding-left: 6px;
   }
+  /* Une ligne codée par couleur mais sans couleur exploitable. La propriété
+     --pronote-subject-color est HERITEE : sans cette règle, un thème qui la
+     pose plus haut colorait toutes ces lignes, sans erreur visible. Deux
+     classes, comme pour le filet neutre de la journée, pour ne pas dépendre
+     de l'ordre des règles. */
+  .row.accented.accent-neutre {
+    border-left-color: transparent;
+  }
 
   /* La ligne en BLOC de deux niveaux : le titre en haut, le contenu dessous
      sur toute la largeur. Voir RowOptions.stacked. C'est le rendu des

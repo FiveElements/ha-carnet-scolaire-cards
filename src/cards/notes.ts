@@ -1,15 +1,30 @@
 import { html, type TemplateResult } from 'lit';
 import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx, Translate } from '../core/types';
-import { formatGrade } from '../core/format';
-import { emptyState, listRow } from '../core/ui/parts';
-import { latestFirst, listAttr } from '../core/list';
-import { subjectAccent } from '../core/subject-color';
+import { compareInstants, formatDayLabel, formatGrade } from '../core/format';
+import { emptyState, listRow, sourcesState } from '../core/ui/parts';
+import { latestFirst, listAttr, sortedBy } from '../core/list';
+import { subjectAccent, subjectFilter } from '../core/subject-color';
 
 type Section = 'average' | 'latest' | 'subjects' | 'report_card';
 
 interface Config extends CarnetCardConfig {
   sections?: Section[];
   limit?: number;
+  /**
+   * Ajoute la date de chaque note aux « dernières notes ». Désactivée par
+   * défaut, pour qu'une carte déjà posée ne change pas d'aspect. `date` est
+   * une date seule : `formatDayLabel` la lit comme un jour, jamais comme
+   * minuit UTC.
+   */
+  show_date?: boolean;
+  /**
+   * Les matières à montrer, dans les dernières notes, les moyennes par
+   * matière et le bulletin. Absente ou vide : toutes. La moyenne générale et
+   * celle de la classe ne sont pas des matières, le filtre ne les touche pas.
+   * La comparaison est celle de `subject_colors` : sans casse, sans accents,
+   * sans espaces de bord.
+   */
+  subjects?: string[];
   /**
    * Table matière → couleur, renseignée par l'utilisateur.
    *
@@ -145,12 +160,21 @@ export const SPEC: CardSpec<Config> = {
         },
       },
       { name: 'limit', selector: { number: { min: 1, max: 50, mode: 'box' } } },
+      { name: 'show_date', selector: { boolean: {} } },
+      {
+        name: 'subjects',
+        // Une saisie libre : le formulaire ne connaît pas les matières de
+        // l'établissement, et `schema` n'a pas accès à `hass` pour les lire.
+        selector: { select: { multiple: true, custom_value: true, options: [] } },
+      },
     ];
   },
   render(ctx: RenderCtx<Config>): TemplateResult {
     const c = ctx.config;
     const wanted = sectionsOf(c);
     const blocks: TemplateResult[] = [];
+    const keep = subjectFilter(c.subjects);
+    const filtered = (c.subjects ?? []).some((s) => s.trim() !== '');
 
     if (wanted.includes('average') && ctx.status(OVERALL) === 'ok') {
       const overall = ctx.entity(OVERALL);
@@ -204,17 +228,31 @@ export const SPEC: CardSpec<Config> = {
       }
       // Les plus récentes en tête, sans muter l'attribut, et robuste à une
       // forme inattendue (objet, chaîne, trous) : `latestFirst` s'en charge.
-      const items = latestFirst<Grade>(ctx.attr(GRADES, 'items'), c.limit ?? 8);
+      // Triées par date d'abord : l'intégration garde l'ordre du serveur, qui
+      // n'est pas chronologique, et `latestFirst` seul prendrait les
+      // dernières REÇUES pour les plus récentes.
+      const chronological = sortedBy(
+        listAttr<Grade>(ctx.attr(GRADES, 'items')).filter((g) => keep(g.subject)),
+        (a, b) => compareInstants(a.date, b.date)
+      );
+      const items = latestFirst<Grade>(chronological, c.limit ?? 8);
       for (const g of items) {
         blocks.push(
           listRow({
             primary: g.subject ?? '—',
             secondary:
-              g.coefficient != null
-                ? ctx.t('notes.coefficient', {
-                    value: g.coefficient.toLocaleString(ctx.language),
-                  })
-                : undefined,
+              [
+                g.coefficient != null
+                  ? ctx.t('notes.coefficient', {
+                      value: g.coefficient.toLocaleString(ctx.language),
+                    })
+                  : '',
+                c.show_date === true && g.date
+                  ? formatDayLabel(g.date, ctx.language, ctx.timeZone)
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ') || undefined,
             trailing: g.status ?? formatGrade(g.value, g.out_of, ctx.language),
             accent: NO_COLOR,
           })
@@ -223,7 +261,9 @@ export const SPEC: CardSpec<Config> = {
     }
 
     if (wanted.includes('subjects')) {
-      const items = listAttr<Average>(ctx.attr(AVERAGES, 'items'));
+      const items = listAttr<Average>(ctx.attr(AVERAGES, 'items')).filter((a) =>
+        keep(a.subject)
+      );
       for (const a of items) {
         blocks.push(
           listRow({
@@ -253,7 +293,9 @@ export const SPEC: CardSpec<Config> = {
         .filter((line): line is string => typeof line === 'string' && line.trim() !== '')
         .join('\n');
       if (general) blocks.push(listRow({ primary: general, accent: NO_COLOR }));
-      for (const s of listAttr<ReportSubject>(ctx.attr(REPORT, 'subjects'))) {
+      for (const s of listAttr<ReportSubject>(ctx.attr(REPORT, 'subjects')).filter((r) =>
+        keep(r.name)
+      )) {
         const parts = [
           s.class_average != null
             ? `${ctx.t('notes.class')} ${formatGrade(s.class_average, undefined, ctx.language)}`
@@ -293,6 +335,20 @@ export const SPEC: CardSpec<Config> = {
         : undefined;
 
     if (blocks.length === 0) {
+      // Le vide n'appartient à la carte que si les sources des sections
+      // voulues sont là. Le bulletin n'y figure pas : non publié, il vaut
+      // `unknown` normalement, et ce n'est pas une collecte en retard.
+      const sources: EntityKey[] = [];
+      if (wanted.includes('average')) sources.push(OVERALL);
+      if (wanted.includes('latest')) sources.push(GRADES);
+      if (wanted.includes('subjects')) sources.push(AVERAGES);
+      const autre = sourcesState((k) => ctx.status(k), sources, (path, vars) => ctx.t(path, vars), (c.sections?.length ?? 0) > 0);
+      if (autre !== undefined) return html`${periodRow ?? ''}${autre}`;
+      // Un filtre de matières qui écarte tout le dit : « aucune note pour
+      // cette période » serait faux, il y en a, dans d'autres matières.
+      if (filtered) {
+        return html`${periodRow ?? ''}${emptyState(ctx.t('notes.empty_filtered'))}`;
+      }
       // Une carte configurée sur la seule section « par matière » n'a rien
       // à voir avec des notes : le message générique mentirait.
       const subjectsOnly = wanted.length === 1 && wanted[0] === 'subjects';

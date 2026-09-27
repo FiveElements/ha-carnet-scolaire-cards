@@ -1,3 +1,5 @@
+import { dateTimeFormat, relativeTimeFormat, numberFormat } from './intl';
+
 const ABSENT = new Set(['unknown', 'unavailable', 'none', '']);
 
 export function parseTimestamp(value: string | undefined): Date | undefined {
@@ -6,10 +8,29 @@ export function parseTimestamp(value: string | undefined): Date | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
+/**
+ * Comparateur chronologique sur l'INSTANT, pour `sortedBy` suivi de
+ * `latestFirst`.
+ *
+ * Jamais sur la chaîne : deux horodatages à décalages différents ne
+ * s'ordonnent pas caractère à caractère. Une valeur illisible ou absente passe
+ * **avant** toutes les autres, donc en fin de la liste affichée une fois
+ * `latestFirst` passé, et c'est elle que la limite écarte d'abord. Le
+ * `+Infinity` que les cartes employaient la mettait au contraire en tête de la
+ * carte. Deux valeurs illisibles gardent leur ordre, sans produire de `NaN`.
+ */
+export function compareInstants(a: string | undefined, b: string | undefined): number {
+  const ta = parseTimestamp(a?.trim())?.getTime();
+  const tb = parseTimestamp(b?.trim())?.getTime();
+  if (ta === undefined) return tb === undefined ? 0 : -1;
+  if (tb === undefined) return 1;
+  return ta - tb;
+}
+
 export function formatTime(value: string | undefined, language: string, timeZone: string): string {
   const d = parseTimestamp(value);
   if (!d) return '';
-  return new Intl.DateTimeFormat(language, {
+  return dateTimeFormat(language, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -17,18 +38,66 @@ export function formatTime(value: string | undefined, language: string, timeZone
   }).format(d);
 }
 
+/**
+ * Une date seule, `AAAA-MM-JJ` : un jour, pas un instant.
+ *
+ * `new Date('2026-09-10')` rend minuit **UTC**, et reprojeté dans un fuseau à
+ * décalage négatif ce minuit recule d'un jour. L'intégration publie sous cette
+ * forme l'échéance d'un devoir et la date d'une évaluation (voir
+ * `test/fixtures/FORMES.md`) ; la carte devoirs s'en protégeait seule, et la
+ * carte évaluations affichait la veille à la Martinique.
+ */
+export const DATE_SEULE = /^\d{4}-\d{2}-\d{2}$/;
+
+export const isDateOnly = (value: string | undefined): boolean =>
+  value !== undefined && DATE_SEULE.test(value.trim());
+
+/**
+ * L'heure d'un instant, suivie de son jour quand ce n'est pas aujourd'hui.
+ *
+ * Une heure seule se lit comme « aujourd'hui ». Un vendredi soir, « Maths à
+ * 08:30 » désignait le lundi, et une suspension de plusieurs jours s'annonçait
+ * « jusqu'à 06:00 ». Les jours se comparent dans le fuseau d'affichage : c'est
+ * là que se trouve le « aujourd'hui » de la personne qui lit. La virgule garde
+ * les phrases des catalogues intactes dans les quatre langues.
+ */
+export function formatTimeWithDay(
+  value: string | undefined,
+  language: string,
+  timeZone: string,
+  now: Date = new Date()
+): string {
+  const d = parseTimestamp(value);
+  if (!d) return '';
+  const time = formatTime(value, language, timeZone);
+  const jour = (x: Date): string =>
+    dateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(x);
+  if (jour(d) === jour(now)) return time;
+  return `${time}, ${formatDayLabel(value, language, timeZone)}`;
+}
+
+/**
+ * Le libellé du jour d'une valeur. Une date seule est mise en forme **en
+ * UTC** : elle vaut minuit UTC, et c'est le seul fuseau où la relire redonne
+ * le jour écrit. Un horodatage est un vrai instant et suit `timeZone`.
+ */
 export function formatDayLabel(
   value: string | undefined,
   language: string,
   timeZone: string
 ): string {
-  const d = parseTimestamp(value);
+  const d = parseTimestamp(value?.trim());
   if (!d) return '';
-  return new Intl.DateTimeFormat(language, {
+  return dateTimeFormat(language, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    timeZone,
+    timeZone: isDateOnly(value) ? 'UTC' : timeZone,
   }).format(d);
 }
 
@@ -44,7 +113,7 @@ export function formatRelative(
   // donc porter sur le delta brut en millisecondes, pas sur deltaMin arrondi.
   if (Math.abs(deltaMs) < 60000) return relativeNow();
   const deltaMin = Math.round(deltaMs / 60000);
-  const rtf = new Intl.RelativeTimeFormat(language, { numeric: 'always', style: 'short' });
+  const rtf = relativeTimeFormat(language, { numeric: 'always', style: 'short' });
   if (Math.abs(deltaMin) < 60) return normalize(rtf.format(deltaMin, 'minute'));
   const deltaH = Math.round(deltaMin / 60);
   if (Math.abs(deltaH) < 24) return normalize(rtf.format(deltaH, 'hour'));
@@ -57,7 +126,7 @@ export function formatRelative(
    * chaque langue (« maintenant », « ora », « ahora », « agora »).
    */
   function relativeNow(): string {
-    return new Intl.RelativeTimeFormat(language, { numeric: 'auto' }).format(0, 'second');
+    return relativeTimeFormat(language, { numeric: 'auto' }).format(0, 'second');
   }
 }
 
@@ -120,9 +189,12 @@ export function formatDuration(minutes: number | undefined, language = 'fr'): st
   // C'est arrivé en production, sur une durée d'absence que PRONOTE écrit en
   // toutes lettres (« 2h00 ») et qu'un appelant multipliait par 60.
   if (minutes === undefined || !Number.isFinite(minutes) || minutes < 0) return '';
+  // Une durée convertie depuis des heures décimales n'est pas entière : sans
+  // arrondi, le reste sortait en « 1 h 19.8 », avec un point décimal anglais.
+  minutes = Math.round(minutes);
   if (minutes < 60) {
     return normalize(
-      new Intl.NumberFormat(language, {
+      numberFormat(language, {
         style: 'unit',
         unit: 'minute',
         unitDisplay: 'short',
@@ -132,7 +204,7 @@ export function formatDuration(minutes: number | undefined, language = 'fr'): st
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   const hourPart = normalize(
-    new Intl.NumberFormat(language, { style: 'unit', unit: 'hour', unitDisplay: 'short' }).format(h)
+    numberFormat(language, { style: 'unit', unit: 'hour', unitDisplay: 'short' }).format(h)
   );
   return m === 0 ? hourPart : `${hourPart} ${String(m).padStart(2, '0')}`;
 }
@@ -177,11 +249,19 @@ const decodeEntities = (s: string): string =>
  */
 export function plainText(value: string | undefined): string {
   if (!value) return '';
-  const flattened = value
+  let flattened = value
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<li\b[^>]*>/gi, '\n• ')
-    .replace(/<\/(?:p|div|li|tr|h[1-6]|ul|ol)>/gi, '\n')
-    .replace(/<[^>]*>/g, '');
+    .replace(/<\/(?:p|div|li|tr|h[1-6]|ul|ol)>/gi, '\n');
+  // Seule une vraie balise part : un chevron suivi d'une lettre (ou d'une
+  // barre puis d'une lettre). Un texte brut « si a < b et c > d » gardait
+  // sinon « si a d ». Le retrait se répète jusqu'à stabilité : un seul
+  // passage sur « <<b>b> » laisse « <b> », une balise reformée par le
+  // retrait lui-même. Chaque passage raccourcit la chaîne, la boucle termine.
+  for (let previous = ''; previous !== flattened; ) {
+    previous = flattened;
+    flattened = flattened.replace(/<\/?[a-z][^>]*>/gi, '');
+  }
   return decodeEntities(flattened)
     .split('\n')
     .map((line) => line.replace(/[\t  ]+/g, ' ').trim())

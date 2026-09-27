@@ -142,4 +142,6 @@ portent pas côté PRONOTE.
 
 « Aucun cours » : week-end, jour férié, vacances. Ce n'est pas une panne
 de collecte. Un cours **annulé** reste visible, barré : le retirer
-donnerait l'illusion qu'il n'a jamais existé.
+donnerait l'illusion qu'il n'a jamais existé. Un cours dont l'élève est
+**dispensé** reste visible lui aussi, avec la pastille « dispensé », et
+n'est jamais marqué « en cours ».

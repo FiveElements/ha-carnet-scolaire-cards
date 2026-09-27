@@ -41,7 +41,10 @@ export function listAttr<T>(value: unknown): T[] {
  */
 export function latestFirst<T>(value: unknown, limit?: number): T[] {
   const all = listAttr<T>(value);
-  const count = limit === undefined || limit < 0 ? all.length : limit;
+  // `typeof` et `isFinite` : un `limit: null` venu du YAML passait `< 0`
+  // (faux) et rendait une liste vide, un NaN aussi.
+  const count =
+    typeof limit !== 'number' || !Number.isFinite(limit) || limit < 0 ? all.length : limit;
   const out: T[] = [];
   for (let i = all.length - 1; i >= Math.max(0, all.length - count); i--) {
     const item = all[i];

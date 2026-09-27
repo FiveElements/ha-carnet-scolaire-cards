@@ -111,7 +111,11 @@
     "limit": "Numero massimo di voti",
     "section_report_card": "Pagella",
     "period": "Periodo",
-    "latest_grade": "Ultimo voto"
+    "latest_grade": "Ultimo voto",
+    "show_date": "Mostra la data dei voti",
+    "subjects": "Materie visualizzate",
+    "subjects_helper": "Lascia vuoto per tutte le materie. Maiuscole e accenti non contano.",
+    "empty_filtered": "Nessun voto per le materie scelte."
   },
   "emploi_du_temps": {
     "name": "Orario",
@@ -123,6 +127,7 @@
     "canceled": "annullata",
     "test": "verifica",
     "outing": "uscita",
+    "exempted": "esonerato",
     "current": "in corso",
     "show_rooms": "Mostra le aule",
     "show_teachers": "Mostra i professori"
@@ -198,6 +203,7 @@
     "canceled": "annullata",
     "test": "verifica",
     "outing": "uscita",
+    "exempted": "esonerato",
     "show_meal": "Mostrare la fascia del pasto",
     "meal_label": "Etichetta della fascia del pasto",
     "meal_from": "Inizio della fascia di mezzogiorno (HH:MM)",

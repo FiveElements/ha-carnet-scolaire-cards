@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx, Translate } from '../core/types';
-import { formatDayLabel, formatDuration, formatTime, parseTimestamp } from '../core/format';
-import { chip, emptyState, listRow } from '../core/ui/parts';
+import { compareInstants, formatDayLabel, formatDuration, formatTime } from '../core/format';
+import { chip, emptyState, listRow, sourcesState } from '../core/ui/parts';
 import { latestFirst, listAttr, sortedBy } from '../core/list';
 
 type Section = 'absences' | 'delays' | 'punishments';
@@ -126,16 +126,9 @@ const sectionsOf = (c: Config): Section[] =>
  * avant de confier le tableau à `latestFirst` — sans muter l'entrée.
  */
 function byDateAscending<T>(items: T[], dateOf: (item: T) => string | undefined): T[] {
-  // Sur l'INSTANT, jamais sur la chaîne : un `localeCompare` d'horodatages ISO
-  // n'ordonne correctement que si tous portent le même décalage horaire, et se
-  // trompe en silence sinon. Une date illisible part en fin de liste plutôt que
-  // de s'intercaler au hasard.
-  return sortedBy(
-    items,
-    (a, b) =>
-      (parseTimestamp(dateOf(a))?.getTime() ?? Number.POSITIVE_INFINITY) -
-      (parseTimestamp(dateOf(b))?.getTime() ?? Number.POSITIVE_INFINITY)
-  );
+  // Sur l'INSTANT, jamais sur la chaîne, et une date illisible en fin de la
+  // liste affichée : voir `compareInstants`.
+  return sortedBy(items, (a, b) => compareInstants(dateOf(a), dateOf(b)));
 }
 
 export const SPEC: CardSpec<Config> = {
@@ -236,9 +229,15 @@ export const SPEC: CardSpec<Config> = {
 
     let rows = 0;
 
+    // Le détail des absences vient de `sensor:absences` ; à défaut, de
+    // `sensor:unjustified_absences`, qui publie les mêmes éléments restreints
+    // aux non justifiées. Sans ce repli, une instance qui ne publie que le
+    // second affichait son compteur, puis « Rien à signaler » juste dessous.
+    const absencesSource = ctx.status(ABSENCES) === 'ok' ? ABSENCES : UNJUSTIFIED_ABSENCES;
+
     if (wanted.includes('absences')) {
       const sorted = byDateAscending(
-        listAttr<Absence>(ctx.attr(ABSENCES, 'items')),
+        listAttr<Absence>(ctx.attr(absencesSource, 'items')),
         (a) => a.to_date ?? a.from_date
       );
       const items = latestFirst<Absence>(sorted, limit);
@@ -317,8 +316,21 @@ export const SPEC: CardSpec<Config> = {
     // et le bandeau d'échéance, poussés plus haut dans `out`, restent affichés
     // même quand aucune section détaillée n'a de ligne — sans quoi un simple
     // `return emptyState(...)` les effacerait tous les deux.
+    //
+    // Et le vide n'appartient à la carte que si les sources des sections
+    // voulues sont là : le socle la rend dès qu'UNE de ses ancres est
+    // exploitable, donc une section dont le capteur est `unknown` ou absent
+    // aurait sinon été déclarée « Rien à signaler ».
     if (rows === 0) {
-      out.push(emptyState(ctx.t('vie_scolaire.empty')));
+      const sources: EntityKey[] = [];
+      if (wanted.includes('absences')) {
+        sources.push(ctx.status(ABSENCES) === 'missing' ? UNJUSTIFIED_ABSENCES : ABSENCES);
+      }
+      if (wanted.includes('delays')) sources.push(DELAYS);
+      if (wanted.includes('punishments')) sources.push(PUNISHMENTS);
+      out.push(
+        sourcesState((k) => ctx.status(k), sources, (path, vars) => ctx.t(path, vars), (c.sections?.length ?? 0) > 0) ?? emptyState(ctx.t('vie_scolaire.empty'))
+      );
     }
     return html`${out}`;
   },

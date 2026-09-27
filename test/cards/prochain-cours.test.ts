@@ -73,6 +73,35 @@ describe('carte prochain-cours', () => {
     expect(text(el)).toContain('Aucun cours à venir');
   });
 
+  it('dit « aucun cours à venir » sur la forme réelle : unknown avec fetched_at', async () => {
+    // Quand plus aucun cours n'est collecté, `_next_lesson_start` rend None et
+    // Home Assistant publie `unknown` (capteur TIMESTAMP) — la collecte a
+    // pourtant réussi, `fetched_at` le prouve. Le socle écartait la carte et
+    // disait « pas encore collectée » pendant toutes les vacances.
+    const el = await mountCard(
+      'carnet-scolaire-prochain-cours',
+      { device_id: 'dev_enfant' },
+      lesson('unknown', { fetched_at: '2026-10-17T18:00:00+02:00', stale: false })
+    );
+    const t = text(el);
+    expect(t).toContain('Aucun cours à venir');
+    expect(t).not.toContain('pas encore collectée');
+  });
+
+  it.each(['unknown', 'unavailable'])(
+    'dit « pas encore collectée » sur %s sans aucun attribut',
+    async (state) => {
+      const el = await mountCard(
+        'carnet-scolaire-prochain-cours',
+        { device_id: 'dev_enfant' },
+        lesson(state)
+      );
+      const t = text(el);
+      expect(t).toContain('pas encore collectée');
+      expect(t).not.toContain('Aucun cours à venir');
+    }
+  );
+
   it('affiche la matière malgré un état non parsable, sans effacer les attributs', async () => {
     // `parseTimestamp` rend `undefined` pour toute chaîne que `new Date()`
     // refuse, pas seulement pour 'none' : un format local ou un libellé de
@@ -171,6 +200,8 @@ describe('carte prochain-cours', () => {
     ]);
     const el = await mountCard('carnet-scolaire-prochain-cours', { device_id: 'dev_enfant' }, hass);
     expect(text(el)).not.toContain('Prochain contrôle');
+    // Assertion positive appariée : sans elle, ce test passerait aussi sur un rendu entièrement cassé.
+    expect(text(el)).toContain('SVT');
   });
 
   it("n'affiche aucune ligne de prochain contrôle quand l'option est active mais l'entité introuvable", async () => {

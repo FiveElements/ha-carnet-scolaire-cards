@@ -111,7 +111,11 @@
     "limit": "Número máximo de notas",
     "section_report_card": "Boletín",
     "period": "Periodo",
-    "latest_grade": "Última nota"
+    "latest_grade": "Última nota",
+    "show_date": "Mostrar la fecha de las notas",
+    "subjects": "Asignaturas mostradas",
+    "subjects_helper": "Déjelo vacío para todas las asignaturas. Las mayúsculas y los acentos no cuentan.",
+    "empty_filtered": "Ninguna nota para las asignaturas elegidas."
   },
   "emploi_du_temps": {
     "name": "Horario",
@@ -123,6 +127,7 @@
     "canceled": "cancelada",
     "test": "examen",
     "outing": "salida",
+    "exempted": "exento",
     "current": "en curso",
     "show_rooms": "Mostrar las aulas",
     "show_teachers": "Mostrar los profesores"
@@ -198,6 +203,7 @@
     "canceled": "anulada",
     "test": "examen",
     "outing": "salida",
+    "exempted": "exento",
     "show_meal": "Mostrar la franja de la comida",
     "meal_label": "Etiqueta de la franja de la comida",
     "meal_from": "Inicio del tramo del mediodía (HH:MM)",

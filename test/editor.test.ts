@@ -57,6 +57,17 @@ describe('CarnetCardEditor — diagnostic de résolution', () => {
     expect(text(el)).toContain('introuvable');
   });
 
+  it('ne dit pas « trouvée » pour une surcharge qui ne désigne rien', async () => {
+    const el = await mount(
+      { device_id: 'dev_enfant', entities: { 'sensor:next_lesson': 'sensor.abc_prochain_cour' } },
+      makeHass([])
+    );
+    const t = text(el);
+    expect(t).toContain('sensor:next_lesson');
+    expect(t).toContain('introuvable');
+    expect(t).not.toMatch(/(^|[^n])trouvée/);
+  });
+
   it("avertit quand l'utilisateur choisit l'appareil de compte", async () => {
     const el = await mount({ device_id: 'dev_compte' }, makeHass([]));
     expect(text(el)).toContain('est un compte, pas un enfant');

@@ -9,8 +9,9 @@ import type {
 } from '../core/types';
 import { chip, emptyState, listRow } from '../core/ui/parts';
 import { listAttr, sortedBy } from '../core/list';
-import { formatDayLabel, parseTimestamp, plainText } from '../core/format';
+import { DATE_SEULE, formatDayLabel, parseTimestamp, plainText } from '../core/format';
 import { subjectAccent } from '../core/subject-color';
+import { dateTimeFormat } from '../core/intl';
 
 /** Ce qu'on montre selon l'état du devoir. */
 type Statut = 'todo' | 'all';
@@ -307,8 +308,9 @@ const emptyFor = (c: Config): string => {
  * habituelle, casse encore à UTC+14 — mais à ne pas fabriquer d'instant du
  * tout quand la valeur est déjà un jour. `dayKey` produit du `AAAA-MM-JJ`,
  * exactement la forme de `due`, donc les deux se comparent en chaînes.
+ * `DATE_SEULE` vit dans le socle (`format.ts`), qui applique la même règle à
+ * `formatDayLabel` pour toutes les cartes.
  */
-const DATE_SEULE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Le jour d'une échéance, sans passer par un instant si c'est déjà un jour. */
 const dueDayKey = (value: string | undefined, timeZone: string): string | undefined => {
@@ -320,17 +322,36 @@ const dueDayKey = (value: string | undefined, timeZone: string): string | undefi
 };
 
 /**
- * Le libellé d'une échéance, mis en forme dans le bon fuseau.
- *
- * Une date seule est mise en forme **en UTC** : elle vaut minuit UTC, donc
- * c'est le seul fuseau où la lire redonne le jour écrit. Une valeur qui porte
- * une heure est un vrai instant et suit le fuseau d'affichage.
+ * Le libellé d'une échéance, mis en forme dans le bon fuseau : une date seule
+ * est lue comme un jour par `formatDayLabel` lui-même.
  */
-const dueLabelOf = (value: string, language: string, timeZone: string): string =>
-  formatDayLabel(value, language, DATE_SEULE.test(value.trim()) ? 'UTC' : timeZone);
+const dueLabelOf = formatDayLabel;
+
+/**
+ * Le jour d'un évènement de calendrier, lu dans ses attributs d'état.
+ *
+ * Home Assistant y publie `start_time` en **heure locale de l'instance, sans
+ * décalage** (`AAAA-MM-JJ HH:MM:SS`). `new Date()` interprétait cette valeur
+ * dans le fuseau du navigateur, puis la carte la reprojetait dans celui de
+ * l'affichage : minuit du 15 devenait le 14 dès que les deux différaient.
+ * Seul le jour sert ici, et il est écrit en tête de la valeur : on le prend
+ * tel quel, comme une date seule. Une valeur avec décalage reste un instant.
+ */
+const HEURE_LOCALE_SANS_DECALAGE = /^(\d{4}-\d{2}-\d{2})[ T]\d{2}:\d{2}(?::\d{2})?$/;
+
+const calendarDayLabel = (
+  value: string | undefined,
+  language: string,
+  timeZone: string
+): string => {
+  const brut = value?.trim();
+  if (!brut) return '';
+  const jour = HEURE_LOCALE_SANS_DECALAGE.exec(brut)?.[1];
+  return formatDayLabel(jour ?? brut, language, timeZone);
+};
 
 const dayKey = (d: Date, timeZone: string): string =>
-  new Intl.DateTimeFormat('en-CA', {
+  dateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
@@ -758,8 +779,26 @@ const piecesOf = (h: Homework, origine: string | undefined): Attachment[] => {
   // alors plus lu du tout, même s'il est encore publié pendant sa version de
   // dépréciation : c'est la forme qui porte le jeton qu'on cherche à retirer.
   const refs = refsOf(h.attachment_refs, origine);
-  if (refs !== undefined) return refs;
   const noms = attachmentsOf(h.attachments, origine);
+  if (refs !== undefined) {
+    // L'intégration retire des refs une pièce qu'elle ne sait pas ouvrir
+    // (OPAQUE), et ne la nomme plus que dans `attachments`. Lire les refs
+    // seules faisait oublier au devoir qu'il portait un document : les noms
+    // absents des refs reviennent en pastilles muettes. On décompte par nom,
+    // pour qu'une pièce nommée des deux côtés ne s'affiche pas deux fois.
+    const restants = new Map<string, number>();
+    for (const piece of refs) {
+      if (piece.name !== undefined) restants.set(piece.name, (restants.get(piece.name) ?? 0) + 1);
+    }
+    const absentes: Attachment[] = [];
+    for (const piece of noms) {
+      if (piece.name === undefined) continue;
+      const reste = restants.get(piece.name) ?? 0;
+      if (reste > 0) restants.set(piece.name, reste - 1);
+      else absentes.push({ name: piece.name });
+    }
+    return [...refs, ...absentes];
+  }
   const liens = attachmentsOf(h.attachment_links, origine);
   if (liens.length === 0) return noms;
   const adresseDe = new Map<string, string>();
@@ -1039,8 +1078,17 @@ export const SPEC: CardSpec<Config> = {
     const nextDue = ((): TemplateResult | '' => {
       if ((statut === 'all' && periode === 'all') || ctx.status(CALENDAR) !== 'ok') return '';
       const message = ctx.attr<string>(CALENDAR, 'message');
-      const startsAt = ctx.attr<string>(CALENDAR, 'start_time');
-      const when = startsAt ? formatDayLabel(startsAt, ctx.language, ctx.timeZone) : '';
+      // Le calendrier garde les devoirs faits, préfixés de « ✅ », et ses
+      // attributs ne décrivent que son PREMIER évènement. En mode « à faire »,
+      // un premier évènement fait n'est pas la prochaine échéance, et les
+      // attributs ne disent pas laquelle l'est : la ligne se tait plutôt que
+      // de nommer un devoir déjà rendu.
+      if (statut === 'todo' && message?.startsWith('✅')) return '';
+      const when = calendarDayLabel(
+        ctx.attr<string>(CALENDAR, 'start_time'),
+        ctx.language,
+        ctx.timeZone
+      );
       // Un calendrier sans évènement à venir ne porte ni intitulé ni date :
       // il se tait, plutôt que d'afficher une ligne creuse.
       if (!message && !when) return '';
@@ -1239,13 +1287,15 @@ export const SPEC: CardSpec<Config> = {
     const features = ctx.attr<number>(TODO_LIST, 'supported_features') ?? 0;
     const writable = Boolean(todoId) && (features & UPDATE_ITEM) !== 0;
 
-    // L'identifiant retenu pour désigner le devoir côté service : `id` s'il
-    // existe, sinon l'énoncé. Ne part jamais du rendu — uniquement d'une
-    // action de l'utilisateur (voir @change ci-dessous).
+    // Le devoir se désigne côté service par son `id`, qui est l'`uid` de
+    // l'entité todo, et par rien d'autre. Le repli sur l'énoncé ne désignait
+    // rien : l'entité nomme un élément par son `uid` ou par son `summary`,
+    // qui est la matière. Un devoir sans `id` n'a donc pas de case. L'appel ne
+    // part jamais du rendu, uniquement d'une action de l'utilisateur (voir
+    // @change ci-dessous).
     const toggle = async (item: Homework, checkbox: HTMLInputElement): Promise<void> => {
-      if (!todoId) return;
-      const itemRef = item.id ?? item.description;
-      if (!itemRef) return;
+      const itemRef = item.id;
+      if (!todoId || !itemRef) return;
       const status = checkbox.checked ? 'completed' : 'needs_action';
       try {
         await ctx.callService('todo.update_item', { item: itemRef, status }, { entity_id: todoId });
@@ -1449,7 +1499,7 @@ export const SPEC: CardSpec<Config> = {
           accent: accent ?? null,
           primary: html`
             ${
-              writable
+              writable && h.id
                 ? html`<input
                     type="checkbox"
                     .checked=${h.done === true}

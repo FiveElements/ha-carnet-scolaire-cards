@@ -46,6 +46,14 @@ describe('latestFirst', () => {
     expect(latestFirst<string>(items, 99)).toEqual(['d', 'c', 'b', 'a']);
   });
 
+  it('rend tout pour une limite nulle ou non finie, comme le commentaire le promet', () => {
+    // `null < 0` est faux et `len - null` vaut `len` : sans garde, un
+    // `limit: null` venu du YAML rendait une liste vide.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- un YAML peut porter `limit: null`, que le type ne décrit pas : c'est précisément le cas testé.
+    expect(latestFirst<string>(items, null as unknown as number)).toEqual(['d', 'c', 'b', 'a']);
+    expect(latestFirst<string>(items, Number.NaN)).toEqual(['d', 'c', 'b', 'a']);
+  });
+
   it("rend une liste vide pour une valeur qui n'est pas un tableau", () => {
     expect(latestFirst({ a: 1 }, 3)).toEqual([]);
   });
