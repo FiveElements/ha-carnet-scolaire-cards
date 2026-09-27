@@ -1,6 +1,6 @@
 {
   "name": "ha-carnet-scolaire-cards",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Cartes Lovelace pour l'intégration Home Assistant Carnet scolaire",
