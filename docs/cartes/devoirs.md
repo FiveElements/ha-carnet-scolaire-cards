@@ -605,9 +605,18 @@ Elle n'apparaît que si `todo:homework` est résolue **et** annonce la
 capacité d'écriture dans son attribut `supported_features`. La capacité est
 lue, jamais supposée.
 
-Cocher appelle `todo.update_item` — l'un des deux seuls appels de service
-que ces cartes peuvent émettre. Si l'appel échoue, la case revient à son
-état précédent : elle ne doit pas mentir sur ce que le serveur sait.
+**Sur un compte parent, il n'y a jamais de case**, même avec l'écriture
+activée dans l'intégration. PRONOTE accepte la coche venue d'une session
+parent sans rien enregistrer. Depuis la version 0.1.6 de l'intégration, la
+liste de devoirs d'un compte parent n'annonce donc plus la capacité
+d'écriture, et la carte n'affiche pas de case. Ce n'est pas un défaut : la
+case ne s'afficherait que pour revenir en arrière à chaque clic.
+
+Cocher appelle `todo.update_item`, l'un des quatre appels de service que
+ces cartes peuvent émettre. Si l'appel échoue, la case revient à son état
+précédent : elle ne doit pas mentir sur ce que le serveur sait. C'est aussi
+le cas quand l'intégration relit la coche et constate que PRONOTE ne l'a
+pas appliquée.
 
 ## L'énoncé
 
