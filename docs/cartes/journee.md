@@ -450,7 +450,8 @@ chose d'un jour à l'autre. L'infobulle des bornes y suit le même drapeau.
 « Aucun cours aujourd'hui » : week-end, jour férié, vacances. C'est un état
 normal, distinct de « pas encore collectée ». Un cours **annulé** reste
 visible, barré et marqué : le retirer donnerait l'illusion qu'il n'a jamais
-existé.
+existé. Un cours dont l'élève est **dispensé** porte la pastille
+« dispensé » et n'est jamais surligné comme cours en cours.
 
 Sur un autre jour, le message devient « Aucun cours ce jour-là » — la même
 information, sans l'affirmation fausse. L'en-tête reste et porte la date : c'est

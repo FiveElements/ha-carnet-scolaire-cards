@@ -2,6 +2,7 @@ import { LitElement, html, nothing, type TemplateResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { HaFormSchema, HomeAssistant } from './ha-types';
 import { createResolveCache, isChildDevice } from './resolve';
+import { dropDanglingOverrides } from './overrides';
 import type { CardSpec, EntityKey, CarnetCardConfig, Translate } from './types';
 import { sharedStyles } from './ui/styles';
 import { localize } from '../localize';
@@ -15,7 +16,8 @@ export class CarnetCardEditor extends LitElement {
 
   private t: Translate = (path, vars) => localize(path, vars, this.hass?.language);
 
-  // Partagé avec la carte (voir base-card.ts) : sans lui, l'éditeur
+  // Le même mécanisme que la carte (voir base-card.ts), avec son propre
+  // cache : sans lui, l'éditeur
   // rebalaierait tout le registre (Object.values(hass.entities)) à chaque
   // mise à jour d'état de la maison tant qu'il reste ouvert.
   private resolveCache = createResolveCache();
@@ -138,11 +140,11 @@ export class CarnetCardEditor extends LitElement {
       ...(spec.requiresAny?.(config) ?? []),
       ...spec.optional(config),
     ];
-    const resolved = this.resolveCache.resolve(
+    // Le même contrôle que la carte : une surcharge qui ne désigne rien n'est
+    // pas « trouvée ».
+    const resolved = dropDanglingOverrides(
       hass,
-      config.device_id,
-      spec.scope,
-      keys,
+      this.resolveCache.resolve(hass, config.device_id, spec.scope, keys, config.entities),
       config.entities
     );
 

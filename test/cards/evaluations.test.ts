@@ -16,14 +16,16 @@ beforeAll(() => {
 });
 
 // La forme reprend celle que l'intégration publie réellement — items[] avec
-// name, subject, date ISO et acquisitions[] portant name, level et
-// abbreviation. Les VALEURS, elles, sont entièrement synthétiques : aucun nom
+// name, subject, une date SEULE (`AAAA-MM-JJ`, `evaluation.date.isoformat()`
+// sur un champ `date` côté intégration) et acquisitions[] portant name, level
+// et abbreviation. L'ancienne fixture écrivait un horodatage avec décalage,
+// que l'intégration ne publie pas : c'est ce qui a caché le recul d'un jour. Les VALEURS, elles, sont entièrement synthétiques : aucun nom
 // d'élève, d'enseignant ou d'établissement ne doit entrer dans ce dépôt.
 const items = [
   {
     name: 'Résolution de problèmes',
     subject: 'Mathématiques',
-    date: '2026-09-02T08:00:00+02:00',
+    date: '2026-09-02',
     acquisitions: [
       { name: 'Modéliser', level: 'Très bonne maîtrise', abbreviation: 'TBM' },
       { name: 'Calculer', level: 'Maîtrise fragile', abbreviation: 'MF' },
@@ -32,7 +34,7 @@ const items = [
   {
     name: 'Compréhension écrite',
     subject: 'Anglais',
-    date: '2026-09-05T10:00:00+02:00',
+    date: '2026-09-05',
     acquisitions: [{ name: 'Comprendre un texte', level: 'Maîtrise satisfaisante' }],
   },
 ];
@@ -62,6 +64,27 @@ describe('carte évaluations', () => {
     expect(t.indexOf('Anglais')).toBeLessThan(t.indexOf('Mathématiques'));
   });
 
+  it('date une évaluation au jour écrit, même dans un fuseau à décalage négatif', async () => {
+    const hass = evals({ items });
+    hass.config = { time_zone: 'America/Martinique' };
+    const el = await mountCard('carnet-scolaire-evaluations', { device_id: 'dev_enfant' }, hass);
+    const t = text(el);
+    expect(t).toContain('samedi 5 septembre');
+    expect(t).not.toContain('vendredi 4 septembre');
+  });
+
+  it('range une évaluation sans date en dernier, et la limite l’écarte en premier', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-evaluations',
+      { device_id: 'dev_enfant', limit: 2 },
+      evals({ items: [...items, { name: 'Sans date', subject: 'Musique' }] })
+    );
+    const t = text(el);
+    expect(t).toContain('Anglais');
+    expect(t).toContain('Mathématiques');
+    expect(t).not.toContain('Musique');
+  });
+
   it('détaille les compétences et leur niveau, sans jamais les traduire', async () => {
     const el = await mountCard(
       'carnet-scolaire-evaluations',
@@ -85,7 +108,7 @@ describe('carte évaluations', () => {
         items: [
           {
             subject: 'Histoire',
-            date: '2026-09-04T09:00:00+02:00',
+            date: '2026-09-04',
             acquisitions: [{ name: 'Se repérer', abbreviation: 'MS' }],
           },
         ],

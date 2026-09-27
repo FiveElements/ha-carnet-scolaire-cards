@@ -1,7 +1,7 @@
 import { html } from 'lit';
 import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx } from '../core/types';
 import { formatDayLabel, formatRelative, formatTime, parseTimestamp } from '../core/format';
-import { chip, emptyState, listRow } from '../core/ui/parts';
+import { chip, emptyState, listRow, unavailableState } from '../core/ui/parts';
 import { subjectAccent } from '../core/subject-color';
 
 interface Config extends CarnetCardConfig {
@@ -75,10 +75,27 @@ export const SPEC: CardSpec<Config> = {
   // heures entre deux cycles de collecte PRONOTE alors qu'aucune propriété
   // réactive ne change. Le socle pose et retire lui-même la minuterie.
   tickMs: 60_000,
+  /**
+   * « Plus aucun cours » et « pas encore collectée » ont la même valeur :
+   * `unknown`. Quand plus aucun cours n'est collecté — les vacances, la fin
+   * de l'horizon d'emploi du temps — `_next_lesson_start` rend `None` côté
+   * intégration, et Home Assistant publie `unknown` pour un capteur
+   * TIMESTAMP. Le socle écartait donc la carte, et « Aucun cours à venir »
+   * n'était jamais affiché. Seuls les attributs tranchent : `fetched_at`
+   * prouve que la collecte a eu lieu (voir FORMES.md, le pendant positif de
+   * la règle sur `unavailable`). La carte assume donc les deux phrases.
+   */
+  attributeDriven: true,
   render(ctx: RenderCtx<Config>) {
-    // Le socle garantit `e` défini et hors unknown/unavailable ici (spec §4.3) :
-    // NEXT est la seule entité requise, sans `requiresAny`, et `render` n'est
-    // appelé qu'une fois l'état 2 (indisponible) écarté par le socle.
+    // `attributeDriven` fait parvenir ici un état `unknown` ou `unavailable` :
+    // c'est la carte qui dit alors lequel des deux vides s'applique.
+    if (ctx.status(NEXT) !== 'ok') {
+      const collected =
+        ctx.entity(NEXT)?.state === 'unknown' && ctx.attr(NEXT, 'fetched_at') !== undefined;
+      return collected ? emptyState(ctx.t('prochain_cours.empty')) : unavailableState((path, vars) => ctx.t(path, vars));
+    }
+    // Le socle garantit `e` défini ici : NEXT est la seule entité requise,
+    // sans `requiresAny`, et son statut vient d'être vérifié.
     const e = ctx.entity(NEXT)!;
     // Le socle ne traite comme « indisponible » que unknown/unavailable : un
     // horodatage qui ne se parse pas (état 'none' notamment, publié par

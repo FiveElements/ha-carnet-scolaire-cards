@@ -174,6 +174,30 @@ describe('carte mode de collecte — avec le sélecteur, le contrat', () => {
     );
   });
 
+  it('absorbe l’échec de la bascule sans rejet non géré, et garde le mode réel', async () => {
+    // Home Assistant affiche déjà son bandeau d'erreur ; la promesse rejetée,
+    // lancée avec `void`, finissait en « Uncaught (in promise) ».
+    const hass = avecSelecteur('normal');
+    hass.callService = vi.fn().mockRejectedValue(new Error('refusé'));
+    const rejets: unknown[] = [];
+    const surRejet = (raison: unknown): void => {
+      rejets.push(raison);
+    };
+    process.on('unhandledRejection', surRejet);
+    try {
+      const el = await monter({}, hass);
+      [...(el.shadowRoot?.querySelectorAll('button') ?? [])][1]?.click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await el.updateComplete;
+      expect(rejets).toEqual([]);
+      // Le bouton pressé reste celui du mode que l'entité publie.
+      const presse = el.shadowRoot?.querySelector('button[aria-pressed="true"]');
+      expect(presse?.textContent?.trim()).toBe('Normal');
+    } finally {
+      process.off('unhandledRejection', surRejet);
+    }
+  });
+
   it('signale un sélecteur qui ne propose aucun mode', async () => {
     // L'entité est là mais son attribut `options` est vide ou d'une autre
     // forme. Se taire laisserait une carte qui affiche un état et rien

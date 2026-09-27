@@ -335,6 +335,19 @@ describe('carte vue journée — les cinq éléments requis', () => {
     expect(l[0]?.matiere).toBe('Maths');
   });
 
+  it('dit « dispensé » sur un cours dont l’élève est dispensé, et ne le surligne jamais', async () => {
+    // L'intégration publie `exempted` sur chaque créneau et l'exclut déjà de
+    // ses propres calculs (prochain cours, fin de journée) : la carte le
+    // montrait comme un cours ordinaire, « en cours » compris.
+    testClock.now = '2026-09-09T08:30:00+02:00';
+    const el = await monter({}, [{ ...JOURNEE[0], exempted: true }, JOURNEE[1]]);
+    const l = lignes(el);
+    expect(l[0]?.pastilles).toContain('dispensé');
+    expect(l[0]?.courant).toBe(false);
+    expect(l[0]?.matiere).toBe('Maths');
+    expect(l[1]?.pastilles).not.toContain('dispensé');
+  });
+
   it('barre un cours annulé ET lui pose sa pastille', async () => {
     const el = await monter({}, [{ ...JOURNEE[0], canceled: true }]);
     const l = lignes(el);

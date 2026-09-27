@@ -236,7 +236,16 @@ const withCalendar = (attributes: Record<string, unknown>, calendar: Record<stri
   ]);
 
 describe('carte devoirs', () => {
-  const nextEvent = { message: 'DM de physique', start_time: '2026-09-15T08:00:00+02:00' };
+  // La forme RÉELLE des attributs d'un calendrier Home Assistant : une heure
+  // locale de l'instance, SANS décalage (`strftime('%Y-%m-%d %H:%M:%S')`), et
+  // un évènement de devoir couvre la journée entière. L'ancienne fixture
+  // écrivait un ISO avec décalage, qu'aucune instance ne publie.
+  const nextEvent = {
+    message: 'DM de physique',
+    all_day: true,
+    start_time: '2026-09-15 00:00:00',
+    end_time: '2026-09-16 00:00:00',
+  };
 
   it('nomme la prochaine échéance depuis le calendrier, que le filtre masque', async () => {
     const el = await mountCard(
@@ -284,6 +293,32 @@ describe('carte devoirs', () => {
           attributes: nextEvent,
         },
       ])
+    );
+    const t = text(el);
+    expect(t).not.toContain('Prochaine échéance');
+    expect(t).toContain('Maths');
+  });
+
+  it('date la prochaine échéance au jour écrit, quel que soit le fuseau', async () => {
+    // Lue par `new Date()`, l'heure locale sans décalage était interprétée
+    // dans le fuseau du NAVIGATEUR puis reprojetée dans celui de l'instance :
+    // à Honolulu (UTC−10), minuit du 15 devenait le 14.
+    const hass = withCalendar({ items }, nextEvent);
+    hass.config = { time_zone: 'Pacific/Honolulu' };
+    const el = await mountCard('carnet-scolaire-devoirs', { device_id: 'dev_enfant', filter: 'todo' }, hass);
+    const t = text(el);
+    expect(t).toContain('Prochaine échéance');
+    expect(t).toContain('mardi 15 septembre');
+    expect(t).not.toContain('lundi 14 septembre');
+  });
+
+  it('ne donne pas pour prochaine échéance un devoir déjà fait, en mode « à faire »', async () => {
+    // Le calendrier garde les devoirs faits, préfixés de « ✅ » : ses
+    // attributs ne décrivent que le PREMIER évènement, fait ou non.
+    const el = await mountCard(
+      'carnet-scolaire-devoirs',
+      { device_id: 'dev_enfant', filter: 'todo' },
+      withCalendar({ items }, { ...nextEvent, message: '✅ DM de physique' })
     );
     const t = text(el);
     expect(t).not.toContain('Prochaine échéance');
@@ -503,6 +538,19 @@ describe('carte devoirs', () => {
     );
   });
 
+  it('ne propose pas de case pour un devoir sans identifiant, plutôt que de le désigner par son énoncé', async () => {
+    // L'entité todo nomme un devoir par son `uid` ou par son `summary`, qui
+    // est la MATIÈRE : l'énoncé HTML ne désigne rien côté service.
+    const sansId = [{ subject: 'Physique', description: '<p>X</p>', due: '2026-09-09', done: false }];
+    const hass = withTodoList({ items: sansId }, 4);
+    const spy = vi.fn().mockResolvedValue(undefined);
+    hass.callService = spy;
+    const el = await mountCard('carnet-scolaire-devoirs', { device_id: 'dev_enfant' }, hass);
+    expect(text(el)).toContain('Physique');
+    expect(el.shadowRoot?.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it("restaure la case à cocher si l'appel échoue", async () => {
     const todo = [{ id: 'h1', subject: 'Maths', description: 'X', due: '2026-09-09', done: false }];
     const hass = withTodoList({ items: todo }, 4);
@@ -699,7 +747,12 @@ const withCalendarEtRetard = (attributes: Record<string, unknown>) =>
       entity_id: 'calendar.abc_devoirs',
       device: 'dev_enfant',
       state: 'off',
-      attributes: { message: 'DM de physique', start_time: '2026-09-15T08:00:00+02:00' },
+      attributes: {
+        message: 'DM de physique',
+        all_day: true,
+        start_time: '2026-09-15 00:00:00',
+        end_time: '2026-09-16 00:00:00',
+      },
     },
     {
       key: 'binary_sensor:homework_overdue',
@@ -2970,6 +3023,25 @@ describe('carte devoirs — l’adresse d’un fichier se demande au clic', () =
     expect(liensPieces(el).length).toBe(0);
     expect(boutonPiece(el)).toBeNull();
     expect(text(el)).toContain('ne peuvent pas être ouvertes');
+  });
+
+  it('garde muette une pièce que l’intégration exclut de attachment_refs', async () => {
+    // L'intégration retire des refs une pièce OPAQUE (non ouvrable) et ne la
+    // nomme plus que dans `attachments`. Lire les refs seules faisait oublier
+    // au devoir qu'il portait un document.
+    const el = await monter([], vi.fn<HomeAssistant['callService']>());
+    expect(pastillesPieces(el).map((n) => n.textContent?.trim())).toEqual(['sujet.pdf']);
+    expect(liensPieces(el).length).toBe(0);
+    expect(text(el)).toContain('ne peuvent pas être ouvertes');
+  });
+
+  it('ne double pas une pièce nommée à la fois dans attachments et dans attachment_refs', async () => {
+    const el = await monter(
+      [{ name: 'sujet.pdf', kind: 'local', key: CLE }],
+      vi.fn<HomeAssistant['callService']>()
+    );
+    expect(pastillesPieces(el).map((n) => n.textContent?.trim())).toEqual(['sujet.pdf']);
+    expect(boutonPiece(el)?.textContent?.trim()).toBe('sujet.pdf');
   });
 
   it('ignore attachment_links dès que attachment_refs est publié', async () => {

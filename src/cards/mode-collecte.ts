@@ -196,13 +196,15 @@ export const SPEC: CardSpec<Config> = {
                   @click=${() => {
                     // L'appel ne part QUE d'ici, jamais de `render`.
                     if (target !== undefined) {
-                      void ctx.callService(
-                        'select.select_option',
-                        { option: mode },
-                        {
-                          entity_id: target,
-                        }
-                      );
+                      ctx
+                        .callService('select.select_option', { option: mode }, { entity_id: target })
+                        .catch(() => {
+                          // Home Assistant affiche déjà son bandeau d'erreur,
+                          // et le bouton pressé reste celui du mode que
+                          // l'entité publie : rien à corriger ici. Sans ce
+                          // `catch`, le rejet finissait en « Uncaught (in
+                          // promise) » dans la console.
+                        });
                     }
                   }}
                 >

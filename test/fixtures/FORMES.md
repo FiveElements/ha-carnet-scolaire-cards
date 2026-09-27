@@ -162,7 +162,7 @@ fixture :
 `weeks` porte les numéros de semaine PRONOTE effectivement demandés : un ou
 deux éléments, jamais zéro quand l'état est exploitable.
 | `sensor:homework`, `sensor:homework_tomorrow` | `items` |
-| `calendar:homework` | `message`, `start_time`, `end_time`, `location`, `description`, `all_day` |
+| `calendar:homework` | `message`, `start_time`, `end_time`, `location`, `description`, `all_day` — voir plus bas pour la forme de `start_time` |
 | `sensor:absences` | `items` (voir plus bas) |
 | `sensor:unjustified_absences`, `sensor:delays`, `sensor:punishments` | `items` |
 | `sensor:grades` | `items` (voir plus bas) |
@@ -190,7 +190,15 @@ lessons[]   id, subject, subject_id, background_color, teachers, classroom,
 
 items[] de sensor:homework*
             id, subject, description, description_text, due, done,
-            background_color, attachments, attachment_links
+            background_color, attachments, attachment_refs,
+            attachment_links (déprécié)
+
+items[] de sensor:evaluations
+            id, name, subject, date, acquisitions[]
+            (acquisitions : name, level, abbreviation)
+
+items[] de sensor:delays
+            id, date, minutes, justified, justification, reasons
 
 items[] de sensor:absences
             id, from_date, to_date, justified, hours, days, reasons
@@ -211,6 +219,29 @@ Cayenne et à Tahiti, où **tout devoir dû aujourd'hui était donc déclaré en
 retard**. Une date seule se compare et se met en forme comme un jour, jamais
 comme un instant. Le champ était nommé dans le tableau ci-dessus sans être
 typé, et c'est ce silence qui a laissé passer l'hypothèse.
+
+**La `date` d'une évaluation est elle aussi une date seule** (`AAAA-MM-JJ`) :
+`evaluation.date.isoformat()` sur un champ de type `date` côté intégration.
+Le piège est le même que pour `due`, et il a frappé : la fixture des
+évaluations écrivait un horodatage avec décalage, que l'intégration ne publie
+pas, et la carte affichait la veille à la Martinique. `formatDayLabel` lit
+désormais toute date seule comme un jour, pour toutes les cartes.
+
+**`from_date` et `to_date` d'une absence, `date` d'un retard, sont des
+horodatages complets** (`datetime.isoformat()`), et `hours` d'une absence est
+la **chaîne** que PRONOTE écrit (« 2h00 »), jamais un nombre. Les fixtures de
+la vie scolaire écrivaient des dates seules et `hours: 2`, et ne couvraient
+donc pas la branche que les vraies données traversent.
+
+**`start_time` et `end_time` d'un calendrier sont une heure locale de
+l'instance, sans décalage** : Home Assistant les publie par
+`strftime('%Y-%m-%d %H:%M:%S')`. `new Date()` les interprète dans le fuseau du
+**navigateur**, et une carte qui les reprojette ensuite dans le fuseau
+d'affichage change de jour dès que les deux diffèrent. Les échéances de
+devoirs sont des évènements sur la journée entière (`all_day: true`) : seul le
+jour compte, et il est écrit en tête de la valeur. Les devoirs **faits**
+restent dans le calendrier, préfixés de « ✅ », et les attributs ne décrivent
+que le **premier** évènement, fait ou non.
 
 `attachments` est une liste de **chaînes** — des **noms**, jamais des
 adresses — et les adresses vivent dans une **seconde** liste sur le même
@@ -291,6 +322,13 @@ celui de la pièce ; elle n'ouvre rien seule. L'adresse d'un `local` se demande
 typés, portés par `translation_key` dans l'erreur : `attachment_not_collected`
 et `attachment_unknown`.
 
+**`attachment_refs` ne couvre pas toutes les pièces.** Une pièce que
+l'intégration ne sait pas ouvrir (`OPAQUE`) en est **absente**, et n'est plus
+nommée que dans `attachments` (`_homework_dict` : « An OPAQUE attachment is
+absent … and still named in attachments »). Lire les refs seules faisait
+disparaître le document de la carte ; la carte ajoute donc, en pastilles
+muettes, les noms d'`attachments` qui n'ont pas de ref.
+
 `attachment_links` reste publié **une** version, déprécié, puis disparaît. La
 carte ne le lit plus dès que `attachment_refs` est présent.
 
@@ -311,10 +349,50 @@ genre n'a été observé sur l'instance de référence, faute de fin envoyée du
 tout.
 
 Les `lessons` publiées sont un **sous-ensemble** de ce que la passerelle
-décode : `background_color`, `subject_id`, `groups`, `virtual_classrooms`,
-`num`, `place` et `duration` existent côté intégration mais **ne sont pas**
-dans l'attribut. Une carte ne peut donc pas s'en servir — ce n'est pas une
-donnée manquante côté serveur, c'est une donnée non exposée.
+décode : `groups`, `virtual_classrooms`, `num`, `place` et `duration` existent
+côté intégration mais **ne sont pas** dans l'attribut. Une carte ne peut donc
+pas s'en servir — ce n'est pas une donnée manquante côté serveur, c'est une
+donnée non exposée.
+
+`background_color` et `subject_id`, que ce paragraphe rangeait parmi eux,
+**sont** publiés par `_lesson_dict` depuis le 9 septembre 2026 (voir la
+section « `background_color` » plus bas) : la phrase n'avait pas suivi.
+
+### Le champ `id` des éléments — **une clé stable depuis l'intégration 0.1.5**
+
+Jusqu'à la 0.1.4, l'`id` d'un devoir (et l'`uid` de la todo) était
+l'identifiant de **session** PRONOTE, `147#…` : chiffré par session, il
+changeait à chaque reconnexion. Une page ouverte avant une reconnexion
+cochait donc un devoir sous un identifiant que PRONOTE ne reconnaissait plus
+— réponse normale, rien d'enregistré. Mesuré le 26 septembre 2026 : l'uid
+envoyé à 22:59:58 n'existait plus du tout après la reconnexion de 22:57.
+
+Depuis la 0.1.5 (#76 côté intégration), chaque élément porte une clé
+**calculée sur son contenu**, stable d'une session à l'autre. Formes
+annoncées par l'intégration, puis **observées sur instance** le 26 septembre
+2026 après la première collecte de la 0.1.5 : 54 devoirs en `hw-` (dont les
+31 de la todo), 5 notes en `grade-`, 2 absences en `absence-`, 18
+`attachment_refs[].key` en seize hex. Aucun suffixe `-N` n'est apparu : la
+ligne des doublons reste une forme annoncée, non observée.
+
+| élément | forme de `id` |
+|---|---|
+| devoir (`items[]` de `sensor:homework*`), et `uid` de `todo:homework` | `hw-` + 16 hex minuscules |
+| créneau, note, absence, retard, punition, évaluation, information, discussion, message | `lesson-`, `grade-`, `absence-`, `delay-`, `punishment-`, `evaluation-`, `news-`, `discussion-`, `message-`, + 16 hex |
+| deux éléments au contenu identique | la même clé, suffixée `-2`, `-3`… dans l'ordre d'apparition |
+
+`attachment_refs[].key` **ne change pas de forme** : seize hex minuscules,
+ni préfixe ni suffixe — la carte l'exige (`CLE_PIECE`). Seules les entrées du
+condensé passent des identifiants de session aux clés stables.
+
+Deux conséquences pour une carte :
+
+- **aucune ne dépend de la forme** : seule la carte devoirs lit `id`, et elle
+  le transmet tel quel à `todo.update_item`. Rien n'est à changer côté cartes ;
+- **un énoncé modifié change la clé.** Une coche faite entre la modification
+  et la collecte suivante vise une clé devenue inconnue : l'intégration lève
+  alors une erreur plutôt que de répondre normalement, et la case revient à
+  son état d'avant.
 
 ### `background_color` — **publié depuis le 9 septembre 2026, et mesuré**
 

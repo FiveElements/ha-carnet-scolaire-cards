@@ -21,6 +21,12 @@ export interface Lesson {
   test?: boolean;
   outing?: boolean;
   /**
+   * L'élève est dispensé de ce cours. L'intégration l'exclut déjà de ses
+   * propres calculs (prochain cours, fin de journée) ; une carte le montre,
+   * avec sa pastille, et ne le dit jamais « en cours ».
+   */
+  exempted?: boolean;
+  /**
    * « Le serveur n'a pas envoyé l'heure de fin. » Vaut **exactement** ça, et
    * le champ est toujours présent. Sur l'établissement de référence, il vaut
    * `true` sur **37 créneaux sur 37** : cet établissement ne publie aucune
@@ -51,7 +57,9 @@ export const CANCELED_STATUS = 'Cours annulé';
  * normal — exactement ce que la règle « signalé et non masqué » interdit.
  */
 export const isCanceled = (l: Lesson): boolean =>
-  l.canceled === true || l.status === CANCELED_STATUS;
+  // Rogné comme dans `statusLabel` : sinon une espace finale faisait taire le
+  // libellé ici ET là-bas, et le cours annulé passait pour un cours normal.
+  l.canceled === true || (typeof l.status === 'string' && l.status.trim() === CANCELED_STATUS);
 
 /**
  * Le motif écrit par l'établissement, quand il dit plus que la pastille

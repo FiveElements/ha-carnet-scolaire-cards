@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  compareInstants,
+  formatTimeWithDay,
   durationToMinutes,
   formatDayLabel,
   formatDuration,
@@ -26,6 +28,40 @@ describe('parseTimestamp', () => {
   });
 });
 
+describe('compareInstants', () => {
+  it('ordonne sur l’instant, pas sur la chaîne', () => {
+    // 08:00+02:00 (06:00 UTC) est AVANT 07:00Z, bien que la chaîne soit plus grande.
+    expect(compareInstants('2026-09-08T08:00:00+02:00', '2026-09-08T07:00:00Z')).toBeLessThan(0);
+  });
+  it('place une valeur illisible avant toutes les autres, sans NaN', () => {
+    expect(compareInstants(undefined, '2026-09-08')).toBeLessThan(0);
+    expect(compareInstants('2026-09-08', 'pas une date')).toBeGreaterThan(0);
+    expect(compareInstants(undefined, undefined)).toBe(0);
+  });
+});
+
+describe('formatTimeWithDay', () => {
+  const now = new Date('2026-09-25T20:00:00+02:00'); // un vendredi soir, à Paris
+  it('rend l’heure seule le jour même', () => {
+    expect(formatTimeWithDay('2026-09-25T22:30:00+02:00', 'fr', TZ, now)).toBe('22:30');
+  });
+  it('ajoute le jour quand l’instant tombe un autre jour', () => {
+    // « Maths à 08:30 » un vendredi soir, pour le lundi, se lisait comme ce soir.
+    expect(formatTimeWithDay('2026-09-28T08:30:00+02:00', 'fr', TZ, now)).toBe(
+      '08:30, lundi 28 septembre'
+    );
+  });
+  it('compare les jours dans le fuseau d’affichage, pas en UTC', () => {
+    // 00:30 à Paris le 26 est encore le 25 en UTC : c'est bien un autre jour.
+    expect(formatTimeWithDay('2026-09-26T00:30:00+02:00', 'fr', TZ, now)).toBe(
+      '00:30, samedi 26 septembre'
+    );
+  });
+  it('ne rend rien pour une valeur absente', () => {
+    expect(formatTimeWithDay(undefined, 'fr', TZ, now)).toBe('');
+  });
+});
+
 describe('formatTime', () => {
   it('rend une heure locale sur 24 h dans le fuseau demandé', () => {
     expect(formatTime('2026-09-08T08:30:00+02:00', 'fr', TZ)).toBe('08:30');
@@ -42,6 +78,17 @@ describe('formatDayLabel', () => {
   });
   it('rend une chaîne vide pour une date absente', () => {
     expect(formatDayLabel(undefined, 'fr', TZ)).toBe('');
+  });
+  it('lit une date seule comme un jour, pas comme minuit UTC, y compris à décalage négatif', () => {
+    // `new Date('2026-09-10')` vaut minuit UTC : reprojeté à la Martinique
+    // (UTC−4), il reculait au 9. C'est la forme que l'intégration publie
+    // pour la date d'une évaluation et pour l'échéance d'un devoir.
+    expect(formatDayLabel('2026-09-10', 'fr', 'America/Martinique')).toBe('jeudi 10 septembre');
+    expect(formatDayLabel('2026-09-10', 'fr', 'Pacific/Kiritimati')).toBe('jeudi 10 septembre');
+    // Assertion positive appariée : un horodatage suit toujours le fuseau.
+    expect(formatDayLabel('2026-09-10T01:00:00+02:00', 'fr', 'America/Martinique')).toBe(
+      'mercredi 9 septembre'
+    );
   });
 });
 
@@ -166,6 +213,12 @@ describe('plainText', () => {
     expect(plainText('<div></div>')).toBe('');
   });
 
+  it('garde les chevrons d’un texte qui ne sont pas des balises', () => {
+    expect(plainText('si a < b et c > d')).toBe('si a < b et c > d');
+    // Assertion positive appariée : une vraie balise part toujours.
+    expect(plainText('<b>gras</b> et 1 < 2')).toBe('gras et 1 < 2');
+  });
+
   it('préfixe les puces d’une liste', () => {
     expect(plainText('<ul><li>un</li><li>deux</li></ul>')).toBe('• un\n• deux');
   });
@@ -187,6 +240,10 @@ describe('formatDuration', () => {
   });
   it('rend les heures rondes sans minutes', () => {
     expect(formatDuration(120)).toBe('2 h');
+  });
+  it('arrondit une durée non entière au lieu de rendre « 1 h 19.8 »', () => {
+    expect(formatDuration(79.8)).toBe('1 h 20');
+    expect(formatDuration(44.6)).toBe('45 min');
   });
 
   describe('language', () => {

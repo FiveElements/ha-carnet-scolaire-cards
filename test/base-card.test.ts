@@ -7,6 +7,7 @@ import {
   resolveTimeZone,
 } from '../src/core/base-card';
 import type { CardSpec, RenderCtx } from '../src/core/types';
+import { localize } from '../src/localize';
 import { makeHass } from './fixtures/hass';
 import { mountCard, text } from './fixtures/mount';
 
@@ -37,6 +38,34 @@ const SPEC_ANY: CardSpec = {
   schema: () => [],
   render: (ctx) =>
     html`<p class="ok">${ctx.entity('sensor:a')?.state ?? ctx.entity('sensor:b')?.state}</p>`,
+};
+
+// Deux clés requises, et des ancres alternatives en plus : la forme qu'aucune
+// carte n'a encore, et que le socle doit pourtant tenir.
+const SPEC_TWO: CardSpec = {
+  type: 'carnet-scolaire-test-two',
+  name: 'Test deux requises',
+  description: 'Carte de test — deux clés requises et requiresAny',
+  key: 'test',
+  scope: 'child',
+  requires: () => ['sensor:a', 'sensor:b'],
+  requiresAny: () => ['sensor:c', 'sensor:d'],
+  optional: () => [],
+  schema: () => [],
+  render: (ctx) => html`<p class="ok">${ctx.entity('sensor:a')?.state}/${ctx.entity('sensor:b')?.state}</p>`,
+};
+
+// Rend le fuseau résolu : de quoi voir qu'un changement de fuseau repeint.
+const SPEC_TZ: CardSpec = {
+  type: 'carnet-scolaire-tz',
+  name: 'Test fuseau',
+  description: 'Carte de test — fuseau',
+  key: 'test',
+  scope: 'child',
+  requires: () => ['sensor:next_lesson'],
+  optional: () => [],
+  schema: () => [],
+  render: (ctx) => html`<p class="ok">${ctx.timeZone}</p>`,
 };
 
 const btnOf = (el: Element) => el.shadowRoot?.querySelector('button.refresh-btn');
@@ -87,12 +116,52 @@ declare global {
   interface HTMLElementTagNameMap {
     'carnet-scolaire-test': TestCardElement;
     'carnet-scolaire-test-any': TestCardElement;
+    'carnet-scolaire-test-two': TestCardElement;
+    'carnet-scolaire-tz': TestCardElement;
   }
 }
 
 beforeAll(() => {
   defineCard(SPEC);
   defineCard(SPEC_ANY);
+  defineCard(SPEC_TWO);
+  defineCard(SPEC_TZ);
+});
+
+const ent = (key: string, state: string) => ({
+  key,
+  entity_id: key.replace(':', '.abc_'),
+  device: 'dev_enfant' as const,
+  state,
+  attributes: {},
+});
+
+describe('CarnetCardBase — toutes les clés requises, pas une seule', () => {
+  it('ne rend pas la carte quand une seule des deux clés requises est exploitable', async () => {
+    const hass = makeHass([
+      ent('sensor:a', '1'),
+      ent('sensor:b', 'unknown'),
+      ent('sensor:c', '1'),
+    ]);
+    const el = await mountCard('carnet-scolaire-test-two', { device_id: 'dev_enfant' }, hass);
+    const t = text(el);
+    expect(t).toContain('pas encore collectée');
+    expect(el.shadowRoot?.querySelector('p.ok')).toBeNull();
+  });
+
+  it('vérifie encore les clés requises quand requiresAny est déclaré', async () => {
+    const hass = makeHass([ent('sensor:c', '1')]);
+    const el = await mountCard('carnet-scolaire-test-two', { device_id: 'dev_enfant' }, hass);
+    const t = text(el);
+    expect(t).toContain('sensor:a');
+    expect(el.shadowRoot?.querySelector('p.ok')).toBeNull();
+  });
+
+  it('rend la carte quand les deux requises et une ancre sont exploitables', async () => {
+    const hass = makeHass([ent('sensor:a', '1'), ent('sensor:b', '2'), ent('sensor:d', '3')]);
+    const el = await mountCard('carnet-scolaire-test-two', { device_id: 'dev_enfant' }, hass);
+    expect(el.shadowRoot?.querySelector('p.ok')?.textContent).toBe('1/2');
+  });
 });
 
 describe('CarnetCardBase — les trois états', () => {
@@ -138,6 +207,27 @@ describe('CarnetCardBase — les trois états', () => {
 
     expect(el.shadowRoot?.querySelector('.ok')).not.toBeNull();
     expect(text(el)).not.toContain('sensor:next_lesson');
+  });
+
+  it('se repeint quand la langue change, sans aucun changement d’état ni de registre', async () => {
+    // Le frontal remplace `hass` en gardant `states`, `entities` et `devices`
+    // quand l'utilisateur change de langue dans son profil : shouldUpdate ne
+    // regardait que ces trois-là, et la carte gardait l'ancienne langue.
+    const hass = makeHass([]);
+    const el = await mountCard('carnet-scolaire-test', { device_id: 'dev_enfant' }, hass);
+    expect(text(el)).toContain(localize('common.missing_hint', undefined, 'fr'));
+    el.hass = { ...hass, language: 'it', locale: { language: 'it', time_zone: 'server' } };
+    await el.updateComplete;
+    expect(text(el)).toContain(localize('common.missing_hint', undefined, 'it'));
+  });
+
+  it('se repeint quand le fuseau de l’instance change, sans aucun changement d’état', async () => {
+    const hass = withNextLessonEntity();
+    const el = await mountCard('carnet-scolaire-tz', { device_id: 'dev_enfant' }, hass);
+    expect(text(el)).toContain('Europe/Paris');
+    el.hass = { ...hass, config: { time_zone: 'America/Martinique' } };
+    await el.updateComplete;
+    expect(text(el)).toContain('America/Martinique');
   });
 
   it('dit « indisponible » quand l’entité existe mais n’a pas d’état', async () => {
@@ -192,6 +282,32 @@ describe('CarnetCardBase — les trois états', () => {
       hass
     );
     expect(el.shadowRoot?.querySelector('.ok')?.textContent).toBe('valeur-directe');
+  });
+
+  it('dit « introuvable » pour une surcharge qui ne désigne rien, ni au registre ni dans les états', async () => {
+    // Une faute de frappe dans `entities` résolvait la clé vers une entité
+    // inexistante : la carte affichait « pas encore collectée », présenté
+    // comme transitoire, et le restait pour toujours.
+    const el = await mountCard(
+      'carnet-scolaire-test',
+      { device_id: 'dev_enfant', entities: { 'sensor:next_lesson': 'sensor.abc_prochain_cour' } },
+      makeHass([])
+    );
+    const t = text(el);
+    expect(t).toContain('sensor:next_lesson');
+    expect(t).not.toContain('pas encore collectée');
+  });
+
+  it('garde une surcharge inscrite au registre même sans état chargé', async () => {
+    const hass = makeHass([
+      { key: 'sensor:autre', entity_id: 'sensor.override', device: 'dev_enfant', unloaded: true },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-test',
+      { device_id: 'dev_enfant', entities: { 'sensor:next_lesson': 'sensor.override' } },
+      hass
+    );
+    expect(text(el)).toContain('pas encore collectée');
   });
 
   it('valide la présence du champ type', () => {

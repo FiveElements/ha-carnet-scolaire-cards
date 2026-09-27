@@ -1,6 +1,6 @@
 import { html, type TemplateResult } from 'lit';
 import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx } from '../core/types';
-import { durationToMinutes, formatDuration, formatRelative, formatTime } from '../core/format';
+import { durationToMinutes, formatDuration, formatRelative, formatTimeWithDay } from '../core/format';
 import { chip, listRow } from '../core/ui/parts';
 import { listAttr } from '../core/list';
 
@@ -97,7 +97,7 @@ export const SPEC: CardSpec<Config> = {
       listRow({
         primary: ctx.t('limiteur.state'),
         secondary: until
-          ? ctx.t('limiteur.until', { time: formatTime(until, lang, tz) })
+          ? ctx.t('limiteur.until', { time: formatTimeWithDay(until, lang, tz) })
           : undefined,
         trailing: chip(stateLabel === stateKey ? state : stateLabel, TONES[state] ?? 'neutral'),
       })

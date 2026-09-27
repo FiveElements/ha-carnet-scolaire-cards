@@ -19,6 +19,20 @@ describe('localize', () => {
     expect(localize('common.unavailable', undefined, 'de')).toBe('Donnée pas encore collectée.');
   });
 
+  it('retombe sur la langue de base d’une variante régionale avant le français', () => {
+    // Home Assistant publie `pt-BR` et `es-419`, deux traductions distinctes
+    // de son interface : sans ce repli, toute la carte parlait français
+    // pendant que `Intl` mettait les dates en portugais.
+    expect(localize('common.unavailable', undefined, 'pt-BR')).toBe(
+      localize('common.unavailable', undefined, 'pt')
+    );
+    expect(localize('common.unavailable', undefined, 'es-419')).toBe(
+      localize('common.unavailable', undefined, 'es')
+    );
+    expect(localize('common.unavailable', undefined, 'pt-BR')).not.toBe(
+      localize('common.unavailable', undefined, 'fr')
+    );
+  });
   it('traduit dans les trois autres langues', () => {
     expect(localize('menu.main_meal', undefined, 'it')).toBe('Piatto');
     expect(localize('menu.main_meal', undefined, 'pt')).toBe('Prato');

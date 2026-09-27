@@ -1,6 +1,6 @@
 import { html, type TemplateResult } from 'lit';
 import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx } from '../core/types';
-import { formatTime } from '../core/format';
+import { formatTimeWithDay } from '../core/format';
 import { chip, listRow } from '../core/ui/parts';
 
 interface Config extends CarnetCardConfig {
@@ -76,7 +76,7 @@ export const SPEC: CardSpec<Config> = {
         listRow({
           primary: ctx.t('eleve.next', {
             subject: ctx.attr<string>(NEXT, 'subject') ?? '—',
-            time: formatTime(ctx.entity(NEXT)?.state, lang, tz),
+            time: formatTimeWithDay(ctx.entity(NEXT)?.state, lang, tz),
           }),
         })
       );

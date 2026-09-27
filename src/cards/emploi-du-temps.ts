@@ -185,9 +185,11 @@ export const SPEC: CardSpec<Config> = {
       // Un créneau annulé n'est jamais « en cours ».
       const start = parseTimestamp(l.start)?.getTime();
       const end = parseTimestamp(l.end)?.getTime();
+      // Un cours dont l'élève est dispensé n'est pas « en cours » pour lui.
       const current =
         !notInClass &&
         !canceled &&
+        l.exempted !== true &&
         start !== undefined &&
         end !== undefined &&
         now >= start &&
@@ -203,6 +205,7 @@ export const SPEC: CardSpec<Config> = {
       if (reason !== '') badges.push(chip(reason, 'warn'));
       if (l.test) badges.push(chip(ctx.t('emploi_du_temps.test'), 'warn'));
       if (l.outing) badges.push(chip(ctx.t('emploi_du_temps.outing')));
+      if (l.exempted === true) badges.push(chip(ctx.t('emploi_du_temps.exempted')));
 
       const details = [
         c.show_rooms ? l.classroom : undefined,

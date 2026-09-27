@@ -3,7 +3,7 @@ import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx } from '../core/t
 import { emptyState, listRow } from '../core/ui/parts';
 import { subjectAccent } from '../core/subject-color';
 import { latestFirst, listAttr, sortedBy } from '../core/list';
-import { formatDayLabel, parseTimestamp } from '../core/format';
+import { compareInstants, formatDayLabel } from '../core/format';
 
 interface Config extends CarnetCardConfig {
   limit?: number;
@@ -85,14 +85,12 @@ export const SPEC: CardSpec<Config> = {
 
     // Tri sur l'instant, jamais sur la chaîne : deux dates à décalages
     // horaires différents ne se comparent pas correctement caractère à
-    // caractère. Une date illisible part en fin de liste plutôt que de
-    // s'intercaler au hasard.
-    const chronological = sortedBy(
-      raw,
-      (a, b) =>
-        (parseTimestamp(a.date)?.getTime() ?? Number.POSITIVE_INFINITY) -
-        (parseTimestamp(b.date)?.getTime() ?? Number.POSITIVE_INFINITY)
-    );
+    // caractère. Une date illisible part en fin de liste AFFICHÉE plutôt que
+    // de s'intercaler au hasard : la liste est chronologique puis lue à
+    // l'envers par `latestFirst`, donc c'est en TÊTE de la chronologie
+    // qu'elle doit aller. `+Infinity` la plaçait au contraire en tête de la
+    // carte, et c'est une évaluation datée que la limite écartait.
+    const chronological = sortedBy(raw, (a, b) => compareInstants(a.date, b.date));
     const items = latestFirst<Evaluation>(chronological, c.limit ?? 8);
 
     const out: TemplateResult[] = [];

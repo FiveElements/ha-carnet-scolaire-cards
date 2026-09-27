@@ -33,7 +33,7 @@ export type HassView = Omit<HomeAssistant, 'callService'>;
 /**
  * Compose un couple domaine/service sans jamais écrire la paire en dur,
  * contiguë, dans le source : la garde anti-identifiant du projet
- * (test/decorators.test.ts) repère `todo.` suivi de minuscules comme un
+ * (test/guards.test.ts) repère `todo.` suivi de minuscules comme un
  * identifiant d'entité codé en dur.
  */
 type Call<Domain extends string, Service extends string> = `${Domain}.${Service}`;
@@ -200,6 +200,11 @@ export interface CardSpec<C extends CarnetCardConfig = CarnetCardConfig> {
    * confiée à la carte, qui devient responsable des DEUX phrases : « pas de
    * menu ce jour » et « pas encore collecté ». Ne l'activez que si la carte
    * sait vraiment les distinguer — sinon le socle le fait mieux.
+   *
+   * Deux cartes le portent : la cantine, et le prochain cours, dont le
+   * capteur vaut `unknown` quand plus aucun cours n'est collecté (les
+   * vacances) — `fetched_at` y distingue « plus de cours » de « pas encore
+   * collectée ».
    */
   attributeDriven?: boolean;
   /**

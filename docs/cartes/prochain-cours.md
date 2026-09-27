@@ -98,10 +98,12 @@ vaut mieux qu'une ligne enrichie d'une donnée supposée.
 
 ## Si la carte est vide
 
-« Aucun cours à venir » : la journée est terminée, ou la semaine. C'est un
-état normal, distinct de « pas encore collectée ». La carte le décide
-elle-même, parce que l'intégration publie ici un état que le socle ne peut
-pas interpréter à sa place.
+« Aucun cours à venir » : plus aucun cours n'est collecté, par exemple
+pendant les vacances. C'est un état normal, distinct de « pas encore
+collectée ». Les deux cas ont pourtant la même valeur : le capteur vaut
+« inconnu ». La carte les distingue elle-même par l'attribut `fetched_at`,
+qui dit que la collecte a bien eu lieu — c'est pourquoi elle porte, comme la
+cantine, le drapeau `attributeDriven`.
 
 Un état illisible n'efface pas la carte : matière, salle et professeur
 restent affichés s'ils sont exploitables.

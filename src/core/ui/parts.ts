@@ -1,5 +1,6 @@
 import { html, nothing, type TemplateResult } from 'lit';
-import type { Translate } from '../types';
+import type { EntityKey, EntityStatus, Translate } from '../types';
+import { subjectColor } from '../subject-color';
 
 export type Tone = 'neutral' | 'ok' | 'warn' | 'problem';
 
@@ -21,6 +22,36 @@ export const missingState = (keys: readonly string[], t: Translate): TemplateRes
   </div>
   <div class="notice">${t('common.missing_hint')}</div>
 `;
+
+/**
+ * Ce qu'une carte doit dire à la place de son vide quand les sources d'une
+ * section ne sont pas exploitables, ou `undefined` si elles le sont toutes.
+ *
+ * Le socle rend une carte dès qu'UNE de ses ancres est exploitable
+ * (`requiresAny`). Une carte à sections peut donc être appelée alors que la
+ * source de la section voulue est `unknown` ou absente du registre, et
+ * conclure au vide (« Aucune note », « Rien à signaler ») pour une donnée
+ * qui n'a simplement pas été collectée. Le vide n'appartient à la carte que
+ * si ses sources sont là : sinon c'est l'un des deux états du socle, et la
+ * carte le dit avec ses mots à lui. « Pas encore collectée » l'emporte sur
+ * « introuvable », parce qu'une source au registre promet une donnée.
+ *
+ * `reportMissing` : une source absente du registre n'est signalée que pour
+ * une section que l'utilisateur a **choisie**. Les sections par défaut sont
+ * une offre, pas une demande : une instance qui ne publie pas les retards
+ * n'a pas à se faire dire qu'ils sont introuvables, alors qu'elle affichait
+ * jusqu'ici « Rien à signaler » sur les absences qu'elle publie.
+ */
+export const sourcesState = (
+  status: (key: EntityKey) => EntityStatus,
+  keys: readonly EntityKey[],
+  t: Translate,
+  reportMissing: boolean
+): TemplateResult | undefined => {
+  if (keys.some((k) => status(k) === 'unavailable')) return unavailableState(t);
+  const missing = reportMissing ? keys.filter((k) => status(k) === 'missing') : [];
+  return missing.length > 0 ? missingState(missing, t) : undefined;
+};
 
 /**
  * État « la carte a levé » : dernier filet, jamais un état normal.
@@ -107,12 +138,21 @@ export const listRow = (o: RowOptions): TemplateResult => {
   const primary = html`<span class="primary">${o.primary}</span>`;
   const secondary = o.secondary ? html`<span class="secondary">${o.secondary}</span>` : '';
   const trailing = o.trailing ? html`<span class="trailing">${o.trailing}</span>` : '';
+  // Refiltrée ici même : la valeur atteint un attribut `style`, et la seule
+  // garantie était jusqu'ici un commentaire demandant à l'appelant de l'avoir
+  // fait. Filtrer une valeur déjà filtrée ne coûte rien.
+  const color = subjectColor(o.accent);
+  // Une ligne codée par couleur mais sans couleur exploitable est marquée
+  // NEUTRE : `--pronote-subject-color` est une propriété héritée, et un thème
+  // qui la pose plus haut colorait sinon toutes ces lignes (voir
+  // `.row.accented.accent-neutre` dans styles.ts).
+  const neutre = o.accent !== undefined && color === undefined;
   return html`
     <div
       class="row ${o.canceled ? 'canceled' : ''} ${
         o.accent === undefined ? '' : 'accented'
-      } ${o.stacked === true ? 'empile' : ''}"
-      style=${typeof o.accent === 'string' ? `--pronote-subject-color: ${o.accent}` : nothing}
+      } ${neutre ? 'accent-neutre' : ''} ${o.stacked === true ? 'empile' : ''}"
+      style=${color === undefined ? nothing : `--pronote-subject-color: ${color}`}
     >
       ${
         o.stacked === true

@@ -5,6 +5,7 @@ import { chip, emptyState } from '../core/ui/parts';
 import { listAttr, sortedBy } from '../core/list';
 import { isCanceled, statusLabel, teachersOf, type Lesson } from '../core/lesson';
 import { subjectAccent } from '../core/subject-color';
+import { dateTimeFormat } from '../core/intl';
 
 /**
  * La journée en grille : un filet de couleur, une colonne d'horaires, la
@@ -260,7 +261,7 @@ const parseClock = (value: string | undefined): number | undefined => {
  * `hass.locale.time_zone` vaut `'local'` ou `'server'` et ferait lever `Intl`.
  */
 const minutesOfDay = (date: Date, timeZone: string): number => {
-  const parts = new Intl.DateTimeFormat('en-GB', {
+  const parts = dateTimeFormat('en-GB', {
     timeZone,
     hour: '2-digit',
     minute: '2-digit',
@@ -287,7 +288,7 @@ const minutesOfDay = (date: Date, timeZone: string): number => {
 
 /** La clé de jour civil d'un instant, dans le fuseau de la carte. */
 const dayKeyOf = (date: Date, timeZone: string): string => {
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const parts = dateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
@@ -986,10 +987,12 @@ export const SPEC: CardSpec<Config> = {
       const accent = subjectAccent(l.background_color, l.subject, c.subject_colors);
       const start = parseTimestamp(l.start)?.getTime();
       const end = parseTimestamp(l.end)?.getTime();
+      // Un cours dont l'élève est dispensé n'est pas « en cours » pour lui.
       const current =
         c.show_current !== false &&
         !notInClass &&
         !canceled &&
+        l.exempted !== true &&
         start !== undefined &&
         end !== undefined &&
         now >= start &&
@@ -1013,6 +1016,7 @@ export const SPEC: CardSpec<Config> = {
       if (reason !== '') badges.push(chip(reason, 'warn'));
       if (l.test) badges.push(chip(ctx.t('journee.test'), 'warn'));
       if (l.outing) badges.push(chip(ctx.t('journee.outing')));
+      if (l.exempted === true) badges.push(chip(ctx.t('journee.exempted')));
 
       return html`
         <div class="jour-ligne ${current ? 'jour-courant' : ''}">
