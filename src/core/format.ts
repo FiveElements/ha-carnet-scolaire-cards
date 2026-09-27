@@ -249,14 +249,19 @@ const decodeEntities = (s: string): string =>
  */
 export function plainText(value: string | undefined): string {
   if (!value) return '';
-  const flattened = value
+  let flattened = value
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<li\b[^>]*>/gi, '\n• ')
-    .replace(/<\/(?:p|div|li|tr|h[1-6]|ul|ol)>/gi, '\n')
-    // Seule une vraie balise part : un chevron suivi d'une lettre (ou d'une
-    // barre puis d'une lettre). Un texte brut « si a < b et c > d » gardait
-    // sinon « si a d ».
-    .replace(/<\/?[a-z][^>]*>/gi, '');
+    .replace(/<\/(?:p|div|li|tr|h[1-6]|ul|ol)>/gi, '\n');
+  // Seule une vraie balise part : un chevron suivi d'une lettre (ou d'une
+  // barre puis d'une lettre). Un texte brut « si a < b et c > d » gardait
+  // sinon « si a d ». Le retrait se répète jusqu'à stabilité : un seul
+  // passage sur « <<b>b> » laisse « <b> », une balise reformée par le
+  // retrait lui-même. Chaque passage raccourcit la chaîne, la boucle termine.
+  for (let previous = ''; previous !== flattened; ) {
+    previous = flattened;
+    flattened = flattened.replace(/<\/?[a-z][^>]*>/gi, '');
+  }
   return decodeEntities(flattened)
     .split('\n')
     .map((line) => line.replace(/[\t  ]+/g, ' ').trim())

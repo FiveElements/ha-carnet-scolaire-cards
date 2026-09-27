@@ -213,6 +213,14 @@ describe('plainText', () => {
     expect(plainText('<div></div>')).toBe('');
   });
 
+  it('retire aussi une balise que le retrait lui-même reformerait', () => {
+    // Un seul passage sur « <<b>b> » laisserait « <b> ».
+    expect(plainText('<<b>b>texte<</i>/i>')).toBe('texte');
+    const imbrique = plainText('<scr<script>ipt>alerte');
+    expect(imbrique).not.toContain('<');
+    expect(imbrique).toContain('alerte');
+  });
+
   it('garde les chevrons d’un texte qui ne sont pas des balises', () => {
     expect(plainText('si a < b et c > d')).toBe('si a < b et c > d');
     // Assertion positive appariée : une vraie balise part toujours.
