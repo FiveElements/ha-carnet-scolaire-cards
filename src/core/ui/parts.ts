@@ -109,6 +109,15 @@ export interface RowOptions {
    * `accent`. Le titre est un élément interne, pas une ligne sœur.
    */
   stacked?: boolean;
+  /**
+   * La ligne en **en-tête de groupe** : intitulé et partie finale plus
+   * grands et plus appuyés, un peu d'air au-dessus. Le cas qui l'a créée,
+   * la carte notes filtrée sur une matière : la moyenne de la matière s'y
+   * lit comme le titre du détail des notes qui la suivent. Une ligne, et
+   * pas un titre à part, pour garder la gouttière de couleur et le trait
+   * de séparation au même endroit que les lignes qu'elle coiffe.
+   */
+  heading?: boolean;
 }
 
 /**
@@ -151,7 +160,9 @@ export const listRow = (o: RowOptions): TemplateResult => {
     <div
       class="row ${o.canceled ? 'canceled' : ''} ${
         o.accent === undefined ? '' : 'accented'
-      } ${neutre ? 'accent-neutre' : ''} ${o.stacked === true ? 'empile' : ''}"
+      } ${neutre ? 'accent-neutre' : ''} ${o.stacked === true ? 'empile' : ''} ${
+        o.heading === true ? 'entete' : ''
+      }"
       style=${color === undefined ? nothing : `--pronote-subject-color: ${color}`}
     >
       ${

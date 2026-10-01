@@ -503,6 +503,54 @@ describe('carte notes — la date des notes et le filtre par matière', () => {
     expect(t).not.toContain('vendredi 4 septembre');
   });
 
+  it('affiche l’intitulé du devoir et la moyenne de la classe sous chaque note', async () => {
+    const hass = makeHass([
+      {
+        key: 'sensor:grades',
+        entity_id: 'sensor.abc_notes',
+        device: 'dev_enfant',
+        state: '1',
+        attributes: {
+          items: [
+            {
+              subject: 'Maths',
+              value: 17,
+              out_of: 20,
+              coefficient: 2,
+              date: '2026-09-05',
+              class_average: 13.04,
+              comment: 'Contrôle n° 1 (chapitre 1)',
+            },
+          ],
+        },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], show_date: true },
+      hass
+    );
+    const t = text(el);
+    expect(t).toContain('17/20');
+    expect(t).toContain('Contrôle n° 1 (chapitre 1)');
+    expect(t).toContain('Classe 13,04/20');
+    // L'intitulé passe avant les faits chiffrés, sur sa propre ligne.
+    const secondary = el.shadowRoot?.querySelector('.row .secondary')?.textContent ?? '';
+    expect(secondary.trim()).toBe(
+      'Contrôle n° 1 (chapitre 1)\ncoef. 2 · samedi 5 septembre · Classe 13,04/20'
+    );
+  });
+
+  it('n’ajoute pas de ligne vide quand la note n’a ni intitulé ni moyenne de classe', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      base()
+    );
+    const secondary = el.shadowRoot?.querySelector('.row .secondary')?.textContent ?? '';
+    expect(secondary.trim()).toBe('coef. 1');
+  });
+
   it('ne montre que les matières choisies, dans les notes comme dans les moyennes', async () => {
     const el = await mountCard(
       'carnet-scolaire-notes',
@@ -578,6 +626,91 @@ describe('carte notes — la date des notes et le filtre par matière', () => {
     const t = text(el);
     expect(t).toContain('Anglais');
     expect(t).not.toContain('Mathématiques');
+  });
+
+  it('place la moyenne de la matière au-dessus de ses notes quand un filtre est actif', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest', 'subjects'], subjects: ['Maths'] },
+      base()
+    );
+    const t = text(el);
+    // 14,2 : la moyenne de l'élève ; 12,1 : celle de la classe ; 14,5 : la note.
+    expect(t).toContain('14,5/20');
+    expect(t.indexOf('12,1')).toBeGreaterThanOrEqual(0);
+    expect(t.indexOf('14,2')).toBeLessThan(t.indexOf('14,5'));
+    expect(t.indexOf('12,1')).toBeLessThan(t.indexOf('14,5'));
+    // La moyenne est un en-tête, la note une ligne ordinaire.
+    const entetes = [...(el.shadowRoot?.querySelectorAll('.row.entete') ?? [])];
+    expect(entetes.map((r) => r.textContent?.includes('14,2'))).toEqual([true]);
+  });
+
+  it('range les notes sous l’en-tête de leur matière quand plusieurs matières sont filtrées', async () => {
+    const hass = makeHass([
+      {
+        key: 'sensor:grades',
+        entity_id: 'sensor.abc_notes',
+        device: 'dev_enfant',
+        state: '4',
+        attributes: {
+          // Chronologie entremêlée : Anglais, Maths, Anglais, Histoire.
+          items: [
+            { subject: 'Anglais', value: 11, out_of: 20, date: '2026-09-08' },
+            { subject: 'Maths', value: 16, out_of: 20, date: '2026-09-07' },
+            { subject: 'Anglais', value: 13, out_of: 20, date: '2026-09-06' },
+            { subject: 'Histoire', value: 9, out_of: 20, date: '2026-09-05' },
+          ],
+        },
+      },
+      {
+        key: 'sensor:averages',
+        entity_id: 'sensor.abc_moyennes_par_matiere',
+        device: 'dev_enfant',
+        state: '2',
+        attributes: {
+          items: [
+            { subject: 'Maths', student: 16, class_average: 12.5, out_of: 20 },
+            { subject: 'Anglais', student: 12, class_average: 10.5, out_of: 20 },
+          ],
+        },
+      },
+    ]);
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      {
+        device_id: 'dev_enfant',
+        sections: ['latest', 'subjects'],
+        subjects: ['Maths', 'Anglais', 'Histoire'],
+      },
+      hass
+    );
+    const rows = [...(el.shadowRoot?.querySelectorAll('.row') ?? [])].map(
+      (r) => `${r.classList.contains('entete') ? '# ' : ''}${r.querySelector('.trailing')?.textContent?.trim()}`
+    );
+    // Histoire n'a pas de moyenne publiée : sa note suit les groupes, sans en-tête.
+    expect(rows).toEqual(['# 16/20', '16/20', '# 12/20', '11/20', '13/20', '9/20']);
+  });
+
+  it('ne pose aucun en-tête sur une carte sans filtre', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest', 'subjects'] },
+      base()
+    );
+    expect(text(el)).toContain('14,2');
+    expect(el.shadowRoot?.querySelectorAll('.row.entete').length).toBe(0);
+  });
+
+  it('garde les notes avant les moyennes sans filtre, pour ne rien changer aux cartes existantes', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest', 'subjects'] },
+      base()
+    );
+    const t = text(el);
+    expect(t).toContain('14,2');
+    expect(t.indexOf('14,5')).toBeGreaterThanOrEqual(0);
+    expect(t.indexOf('14,5')).toBeLessThan(t.indexOf('14,2'));
   });
 
   it('dit que le filtre écarte tout, plutôt que « aucune note »', async () => {

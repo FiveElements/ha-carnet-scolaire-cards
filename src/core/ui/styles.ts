@@ -220,6 +220,18 @@ export const sharedStyles = css`
     color: var(--secondary-text-color);
     font-variant-numeric: tabular-nums;
   }
+  /* L'en-tete d'un groupe de lignes : la moyenne d'une matiere au-dessus du
+     detail de ses notes, sur la carte notes filtree. Plus d'air au-dessus,
+     pour que le groupe se detache du precedent. */
+  .row.entete {
+    padding-top: 12px;
+  }
+  .row.entete .primary,
+  .row.entete .trailing {
+    font-size: 1.15em;
+    font-weight: 600;
+    color: var(--primary-text-color);
+  }
   .notice {
     color: var(--secondary-text-color);
     font-style: italic;
