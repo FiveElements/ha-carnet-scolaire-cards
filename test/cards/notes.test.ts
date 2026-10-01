@@ -689,6 +689,37 @@ describe('carte notes — la date des notes et le filtre par matière', () => {
     );
     // Histoire n'a pas de moyenne publiée : sa note suit les groupes, sans en-tête.
     expect(rows).toEqual(['# 16/20', '16/20', '# 12/20', '11/20', '13/20', '9/20']);
+    // Sous un en-tête, la date remplace la matière ; Histoire, sans en-tête,
+    // garde la sienne.
+    const primaries = [...(el.shadowRoot?.querySelectorAll('.row .primary') ?? [])].map((p) =>
+      p.textContent?.trim()
+    );
+    expect(primaries).toEqual([
+      'Maths',
+      'lundi 7 septembre',
+      'Anglais',
+      'mardi 8 septembre',
+      'dimanche 6 septembre',
+      'Histoire',
+    ]);
+  });
+
+  it('ne répète pas la date dans le détail quand elle remplace la matière', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      {
+        device_id: 'dev_enfant',
+        sections: ['latest', 'subjects'],
+        subjects: ['Maths'],
+        show_date: true,
+      },
+      base()
+    );
+    const note = [...(el.shadowRoot?.querySelectorAll('.row:not(.entete)') ?? [])].find((r) =>
+      r.textContent?.includes('14,5/20')
+    );
+    expect(note?.querySelector('.primary')?.textContent?.trim()).toBe('samedi 5 septembre');
+    expect(note?.querySelector('.secondary')?.textContent?.trim()).toBe('coef. 2');
   });
 
   it('ne pose aucun en-tête sur une carte sans filtre', async () => {

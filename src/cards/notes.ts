@@ -260,15 +260,22 @@ export const SPEC: CardSpec<Config> = {
         if (k !== '' && !colorOf.has(k)) colorOf.set(k, a.background_color);
       }
       for (const g of items) {
+        const key = subjectKey(g.subject);
+        const date = g.date ? formatDayLabel(g.date, ctx.language, ctx.timeZone) : '';
+        // Sous l'en-tête de sa matière, répéter la matière sur chaque note
+        // ne dit rien : la date du devoir prend sa place, quel que soit
+        // `show_date`. Une note sans en-tête — sa matière n'a pas de moyenne
+        // publiée — garde sa matière, faute de quoi rien ne la nommerait.
+        // `colorOf` porte toutes les moyennes, et les notes sont déjà
+        // filtrées : y figurer, c'est avoir un en-tête.
+        const underHeading = grouped && key !== '' && colorOf.has(key) && date !== '';
         const facts = [
           g.coefficient != null
             ? ctx.t('notes.coefficient', {
                 value: g.coefficient.toLocaleString(ctx.language),
               })
             : '',
-          c.show_date === true && g.date
-            ? formatDayLabel(g.date, ctx.language, ctx.timeZone)
-            : '',
+          c.show_date === true && !underHeading ? date : '',
           g.class_average != null
             ? `${ctx.t('notes.class')} ${formatGrade(g.class_average, g.out_of, ctx.language)}`
             : '',
@@ -278,9 +285,9 @@ export const SPEC: CardSpec<Config> = {
         // L'intitulé sur sa propre ligne, au-dessus des faits chiffrés.
         const title = typeof g.comment === 'string' ? g.comment.trim() : '';
         gradeRows.push({
-          key: subjectKey(g.subject),
+          key,
           row: listRow({
-            primary: g.subject ?? '—',
+            primary: underHeading ? date : (g.subject ?? '—'),
             secondary: [title, facts].filter(Boolean).join('\n') || undefined,
             trailing: g.status ?? formatGrade(g.value, g.out_of, ctx.language),
             accent:

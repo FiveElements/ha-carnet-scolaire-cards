@@ -89,8 +89,10 @@ Sur une carte filtrée qui montre à la fois `latest` et `subjects`, la
 carte suit une matière en détail. La moyenne de chaque matière devient un
 **en-tête** : nom et moyenne de l'élève en plus grand, moyenne de la
 classe dessous. Les notes de cette matière se rangent sous cet en-tête,
-les plus récentes d'abord. Une note dont la matière n'a pas encore de
-moyenne publiée suit les groupes, sans en-tête. Sans filtre, rien ne
+les plus récentes d'abord. Chacune y est nommée par la **date** du devoir
+plutôt que par sa matière, que l'en-tête dit déjà, et ce même sans
+`show_date`. Une note dont la matière n'a pas encore de moyenne publiée
+suit les groupes, sans en-tête, et garde sa matière. Sans filtre, rien ne
 change : les dernières notes, puis les moyennes par matière.
 
 Une liste vide revient à ne rien filtrer. Si le filtre écarte toutes les
