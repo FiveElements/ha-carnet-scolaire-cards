@@ -115,7 +115,14 @@
     "show_date": "Afficher la date des notes",
     "subjects": "Matières affichées",
     "subjects_helper": "Laissez vide pour toutes les matières. La casse et les accents ne comptent pas.",
-    "empty_filtered": "Aucune note pour les matières choisies."
+    "empty_filtered": "Aucune note pour les matières choisies.",
+    "range": "min. {min} · max. {max}",
+    "documents": "Documents du devoir",
+    "document_subject": "Sujet",
+    "document_correction": "Corrigé",
+    "document_open": "Ouvrir le document",
+    "attachment_not_collected": "Ce document n’est pas encore disponible : la collecte des notes n’a pas encore eu lieu.",
+    "attachment_unknown": "Ce document n’est plus dans les notes publiées. Rafraîchissez la page et réessayez."
   },
   "emploi_du_temps": {
     "name": "Emploi du temps",

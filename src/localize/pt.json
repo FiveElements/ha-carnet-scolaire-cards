@@ -115,7 +115,14 @@
     "show_date": "Mostrar a data das notas",
     "subjects": "Disciplinas mostradas",
     "subjects_helper": "Deixe vazio para todas as disciplinas. Maiúsculas e acentos não contam.",
-    "empty_filtered": "Nenhuma nota para as disciplinas escolhidas."
+    "empty_filtered": "Nenhuma nota para as disciplinas escolhidas.",
+    "range": "mín. {min} · máx. {max}",
+    "documents": "Documentos da avaliação",
+    "document_subject": "Enunciado",
+    "document_correction": "Correção",
+    "document_open": "Abrir o documento",
+    "attachment_not_collected": "Este documento ainda não está disponível: a recolha das notas ainda não ocorreu.",
+    "attachment_unknown": "Este documento já não está nas notas publicadas. Atualize a página e tente novamente."
   },
   "emploi_du_temps": {
     "name": "Horário",

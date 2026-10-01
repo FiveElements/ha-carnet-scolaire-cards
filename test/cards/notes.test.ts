@@ -1,4 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import type { HomeAssistant } from '../../src/core/ha-types';
 import { defineCard } from '../../src/core/registry';
 import { SPEC } from '../../src/cards/notes';
 import { makeHass } from '../fixtures/hass';
@@ -728,26 +729,30 @@ describe('carte notes — la date des notes et le filtre par matière', () => {
     expect(note?.querySelector('.secondary')?.textContent?.trim()).toBe('coef. 2');
   });
 
-  it('ne pose aucun en-tête sur une carte sans filtre', async () => {
+  it('range aussi par matière une carte sans filtre', async () => {
+    // Même organisation qu'avec un filtre : la moyenne de la matière en
+    // en-tête, ses notes dessous, puis la matière suivante. Anglais n'a pas de
+    // moyenne publiée dans `base()` : sa note suit, sans en-tête.
     const el = await mountCard(
       'carnet-scolaire-notes',
       { device_id: 'dev_enfant', sections: ['latest', 'subjects'] },
+      base()
+    );
+    const rows = [...(el.shadowRoot?.querySelectorAll('.row') ?? [])].map(
+      (r) =>
+        `${r.classList.contains('entete') ? '# ' : ''}${r.querySelector('.trailing')?.textContent?.trim()}`
+    );
+    expect(rows).toEqual(['# 14,2/20', '14,5/20', '12/20']);
+  });
+
+  it('ne pose aucun en-tête quand une seule des deux sections est affichée', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['subjects'] },
       base()
     );
     expect(text(el)).toContain('14,2');
     expect(el.shadowRoot?.querySelectorAll('.row.entete').length).toBe(0);
-  });
-
-  it('garde les notes avant les moyennes sans filtre, pour ne rien changer aux cartes existantes', async () => {
-    const el = await mountCard(
-      'carnet-scolaire-notes',
-      { device_id: 'dev_enfant', sections: ['latest', 'subjects'] },
-      base()
-    );
-    const t = text(el);
-    expect(t).toContain('14,2');
-    expect(t.indexOf('14,5')).toBeGreaterThanOrEqual(0);
-    expect(t.indexOf('14,5')).toBeLessThan(t.indexOf('14,2'));
   });
 
   it('dit que le filtre écarte tout, plutôt que « aucune note »', async () => {
@@ -776,5 +781,145 @@ describe('carte notes — la date des notes et le filtre par matière', () => {
     const noms = SPEC.schema({ type: 'x' }).map((f) => f.name);
     expect(noms).toContain('show_date');
     expect(noms).toContain('subjects');
+  });
+});
+
+const CLE = '0123456789abcdef';
+const noteAvec = (extra: Record<string, unknown>) =>
+  makeHass([
+    {
+      key: 'sensor:grades',
+      entity_id: 'sensor.abc_notes',
+      device: 'dev_enfant',
+      state: '1',
+      attributes: {
+        items: [
+          {
+            subject: 'Maths',
+            value: 17,
+            out_of: 20,
+            date: '2026-09-05',
+            class_average: 13.04,
+            comment: 'Contrôle n° 1',
+            ...extra,
+          },
+        ],
+      },
+    },
+  ]);
+const faireOnglet = () => ({ opener: {} as unknown, location: { replace: vi.fn() }, close: vi.fn() });
+const espionnerOuverture = (onglet: ReturnType<typeof faireOnglet>) =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- un onglet factice réduit aux trois membres que la carte emploie ; jsdom n'ouvre aucune fenêtre réelle à rendre à la place.
+  vi.spyOn(window, 'open').mockReturnValue(onglet as unknown as Window);
+
+
+describe('carte notes — min/max de la classe et documents du devoir', () => {
+  it('affiche la note la plus basse et la plus haute de la classe', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      noteAvec({ min: 1.75, max: 20 })
+    );
+    expect(text(el)).toContain('Classe 13,04/20 · min. 1,75 · max. 20');
+  });
+
+  it('montre « Sujet » et « Corrigé », ouvrables, quand l’intégration les publie', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      noteAvec({
+        attachment_refs: [
+          { name: 'sujet.pdf', kind: 'local', key: CLE, role: 'subject' },
+          { name: 'corrige.pdf', kind: 'local', key: 'fedcba9876543210', role: 'correction' },
+        ],
+      })
+    );
+    const boutons = [...(el.shadowRoot?.querySelectorAll('.devoirs-piece button') ?? [])];
+    expect(boutons.map((b) => b.textContent?.trim())).toEqual(['Sujet', 'Corrigé']);
+    expect(boutons.map((b) => b.getAttribute('title'))).toEqual(['sujet.pdf', 'corrige.pdf']);
+    expect(text(el)).toContain('Contrôle n° 1');
+  });
+
+  it('rend une pastille muette pour une empreinte qui n’a pas la forme attendue', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      noteAvec({
+        attachment_refs: [{ name: 'sujet.pdf', kind: 'local', key: 'pas-une-cle', role: 'subject' }],
+      })
+    );
+    expect(el.shadowRoot?.querySelectorAll('.devoirs-piece button').length).toBe(0);
+    expect(el.shadowRoot?.querySelector('.devoirs-piece .chip')?.textContent?.trim()).toBe('Sujet');
+  });
+
+  it('n’affiche aucun groupe de documents sur une liste vide', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      noteAvec({ attachment_refs: [] })
+    );
+    expect(text(el)).toContain('17/20');
+    expect(el.shadowRoot?.querySelectorAll('.devoirs-pieces').length).toBe(0);
+  });
+
+  it('demande l’adresse au clic, et seulement au clic, puis l’ouvre', async () => {
+    const onglet = faireOnglet();
+    const ouvrir = espionnerOuverture(onglet);
+    const hass = noteAvec({
+      attachment_refs: [{ name: 'sujet.pdf', kind: 'local', key: CLE, role: 'subject' }],
+    });
+    const service = vi
+      .fn<HomeAssistant['callService']>()
+      .mockResolvedValue({ response: { url: 'https://demo.example.invalid/sujet.pdf' } });
+    hass.callService = service;
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      hass
+    );
+    expect(service).not.toHaveBeenCalled();
+    const bouton = el.shadowRoot?.querySelector('.devoirs-piece button');
+    expect(bouton).toBeInstanceOf(HTMLButtonElement);
+    if (bouton instanceof HTMLButtonElement) bouton.click();
+    await vi.waitFor(() => {
+      expect(onglet.location.replace).toHaveBeenCalledWith(
+        'https://demo.example.invalid/sujet.pdf'
+      );
+    });
+    expect(service).toHaveBeenCalledWith(
+      'carnet_scolaire',
+      'get_attachment_url',
+      { device_id: 'dev_enfant', key: CLE },
+      undefined,
+      false,
+      true
+    );
+    expect(onglet.opener).toBeNull();
+    ouvrir.mockRestore();
+  });
+
+  it('dit, dans les mots de la carte notes, qu’un document n’est pas encore collecté', async () => {
+    const onglet = faireOnglet();
+    const ouvrir = espionnerOuverture(onglet);
+    const hass = noteAvec({
+      attachment_refs: [{ name: 'sujet.pdf', kind: 'local', key: CLE, role: 'subject' }],
+    });
+    hass.callService = vi
+      .fn()
+      .mockRejectedValue({ code: 'x', message: 'x', translation_key: 'attachment_not_collected' });
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      hass
+    );
+    const bouton = el.shadowRoot?.querySelector('.devoirs-piece button');
+    if (bouton instanceof HTMLButtonElement) bouton.click();
+    await vi.waitFor(() => {
+      expect(el.shadowRoot?.querySelector('.devoirs-piece-etat')?.textContent).toContain(
+        'la collecte des notes n’a pas encore eu lieu'
+      );
+    });
+    expect(onglet.close).toHaveBeenCalled();
+    ouvrir.mockRestore();
   });
 });

@@ -4,6 +4,7 @@ import { compareInstants, formatCalendarPage, formatDayLabel, formatGrade } from
 import { calendarPage, emptyState, listRow, sourcesState } from '../core/ui/parts';
 import { latestFirst, listAttr, sortedBy } from '../core/list';
 import { subjectAccent, subjectFilter, subjectKey } from '../core/subject-color';
+import { CLE_PIECE, champ, instanceOrigin, openAttachment } from '../core/attachments';
 
 type Section = 'average' | 'latest' | 'subjects' | 'report_card';
 
@@ -76,8 +77,53 @@ interface Grade {
    * nom, qui dit mal ce qu'il porte : ce n'est pas une appréciation.
    */
   comment?: string;
+  /** La plus basse et la plus haute note de la classe à ce devoir. */
+  min?: number | string;
+  max?: number | string;
+  /**
+   * Le sujet et le corrigé déposés par le professeur, sous la forme des
+   * pièces de devoirs : `{ name, kind, key, role }`, `role` valant
+   * `subject` ou `correction`. Seule l'empreinte est publiée ; l'adresse se
+   * demande au clic. `unknown` : lu par `documentsOf`, qui filtre tout.
+   * Une liste vide est le cas normal — un devoir sans document déposé.
+   */
+  attachment_refs?: unknown;
   status?: string;
 }
+
+/** Un document d'un devoir noté, tel que la carte peut le rendre. */
+interface GradeDocument {
+  name?: string;
+  key?: string;
+  role?: 'subject' | 'correction';
+}
+
+/**
+ * Les documents d'une note, débarrassés du reste. Seul le genre `local` est
+ * ouvrable : un sujet ou un corrigé est un fichier, jamais un lien. Une
+ * empreinte qui n'a pas la forme attendue rend une pastille muette plutôt
+ * qu'un appel avec une chaîne que l'intégration n'a pas produite.
+ */
+const documentsOf = (value: unknown): GradeDocument[] => {
+  if (!Array.isArray(value)) return [];
+  const out: GradeDocument[] = [];
+  for (const item of value) {
+    if (item === null || typeof item !== 'object') continue;
+    const brut = champ(item, 'name');
+    const name = typeof brut === 'string' && brut.trim() !== '' ? brut.trim() : undefined;
+    const role = champ(item, 'role');
+    const key = champ(item, 'key');
+    const doc: GradeDocument = {
+      ...(name === undefined ? {} : { name }),
+      ...(role === 'subject' || role === 'correction' ? { role } : {}),
+      ...(champ(item, 'kind') === 'local' && typeof key === 'string' && CLE_PIECE.test(key)
+        ? { key }
+        : {}),
+    };
+    if (doc.name !== undefined || doc.role !== undefined) out.push(doc);
+  }
+  return out;
+};
 
 interface Average {
   subject?: string;
@@ -210,12 +256,67 @@ export const SPEC: CardSpec<Config> = {
       }
     }
 
-    // Une carte filtrée qui montre les notes ET les moyennes suit une matière
-    // en détail : chaque moyenne y devient l'en-tête de sa matière, et les
-    // notes de cette matière se rangent dessous. Ailleurs, l'ordre historique
-    // reste — changer la disposition des cartes existantes n'était pas
-    // demandé. Les lignes se construisent donc à part, avec leur matière.
-    const grouped = filtered && wanted.includes('latest') && wanted.includes('subjects');
+    // Une carte qui montre les notes ET les moyennes les range par matière :
+    // chaque moyenne devient l'en-tête de sa matière, et les notes de cette
+    // matière se rangent dessous, avant la matière suivante. Avec ou sans
+    // filtre, sur demande du propriétaire : la même organisation partout. Les
+    // lignes se construisent donc à part, avec leur matière.
+    const grouped = wanted.includes('latest') && wanted.includes('subjects');
+    const appareil = typeof c.device_id === 'string' ? c.device_id : '';
+    const origine = instanceOrigin(ctx.hass);
+    const ouvrirDocument = async (cle: string, bouton: HTMLButtonElement): Promise<void> => {
+      const etat = bouton.closest('.devoirs-pieces')?.querySelector('.devoirs-piece-etat');
+      if (etat) etat.textContent = '';
+      bouton.disabled = true;
+      let message: string | undefined;
+      try {
+        message = await openAttachment(ctx, appareil, cle, origine, {
+          notCollected: ctx.t('notes.attachment_not_collected'),
+          unknown: ctx.t('notes.attachment_unknown'),
+          failed: ctx.t('devoirs.attachment_failed'),
+          blocked: ctx.t('devoirs.attachment_blocked'),
+        });
+      } finally {
+        bouton.disabled = false;
+      }
+      if (etat && message !== undefined) etat.textContent = message;
+    };
+    // Les pastilles des documents, sous le détail chiffré. Les classes sont
+    // celles des pièces de devoirs, pour un seul style : le libellé dit le
+    // rôle (« Sujet », « Corrigé »), le nom du fichier passe en `title`.
+    const documentsRow = (docs: GradeDocument[]): TemplateResult | string => {
+      if (docs.length === 0) return '';
+      const ouvrables = docs.some((d) => d.key !== undefined && appareil !== '');
+      return html`<span class="devoirs-pieces" role="list" aria-label=${ctx.t('notes.documents')}
+        >${docs.map((d) => {
+          const libelle =
+            d.role === 'subject'
+              ? ctx.t('notes.document_subject')
+              : d.role === 'correction'
+                ? ctx.t('notes.document_correction')
+                : (d.name ?? ctx.t('notes.document_open'));
+          return html`<span class="devoirs-piece" role="listitem"
+            >${
+              d.key !== undefined && appareil !== ''
+                ? html`<button
+                    type="button"
+                    class="chip chip-lien chip-demande"
+                    title=${d.name ?? libelle}
+                    @click=${(event: Event): void => {
+                      const bouton = event.currentTarget;
+                      if (bouton instanceof HTMLButtonElement && d.key) {
+                        void ouvrirDocument(d.key, bouton);
+                      }
+                    }}
+                  >
+                    ${libelle}
+                  </button>`
+                : html`<span class="chip" title=${d.name ?? libelle}>${libelle}</span>`
+            }</span
+          >`;
+        })}${ouvrables ? html`<span class="devoirs-piece-etat" role="status"></span>` : ''}</span
+      >`;
+    };
     const latestBlocks: TemplateResult[] = [];
     const gradeRows: { key: string; row: TemplateResult }[] = [];
     const averageRows: { key: string; row: TemplateResult }[] = [];
@@ -259,6 +360,8 @@ export const SPEC: CardSpec<Config> = {
         const k = subjectKey(a.subject);
         if (k !== '' && !colorOf.has(k)) colorOf.set(k, a.background_color);
       }
+      const secondaryOf = (texte: string, docs: GradeDocument[]) =>
+        docs.length === 0 ? texte || undefined : html`${texte}${documentsRow(docs)}`;
       for (const g of items) {
         const key = subjectKey(g.subject);
         const date = g.date ? formatDayLabel(g.date, ctx.language, ctx.timeZone) : '';
@@ -285,6 +388,12 @@ export const SPEC: CardSpec<Config> = {
           g.class_average != null
             ? `${ctx.t('notes.class')} ${formatGrade(g.class_average, g.out_of, ctx.language)}`
             : '',
+          g.min != null && g.max != null
+            ? ctx.t('notes.range', {
+                min: formatGrade(g.min, undefined, ctx.language),
+                max: formatGrade(g.max, undefined, ctx.language),
+              })
+            : '',
         ]
           .filter(Boolean)
           .join(' · ');
@@ -294,7 +403,10 @@ export const SPEC: CardSpec<Config> = {
           key,
           row: listRow({
             primary: underHeading ? dateCell(g.date, date) : (g.subject ?? '—'),
-            secondary: [title, facts].filter(Boolean).join('\n') || undefined,
+            secondary: secondaryOf(
+              [title, facts].filter(Boolean).join('\n'),
+              documentsOf(g.attachment_refs)
+            ),
             trailing: g.status ?? formatGrade(g.value, g.out_of, ctx.language),
             accent:
               subjectAccent(colorOf.get(subjectKey(g.subject)), g.subject, c.subject_colors) ??

@@ -115,7 +115,14 @@
     "show_date": "Mostrar la fecha de las notas",
     "subjects": "Asignaturas mostradas",
     "subjects_helper": "Déjelo vacío para todas las asignaturas. Las mayúsculas y los acentos no cuentan.",
-    "empty_filtered": "Ninguna nota para las asignaturas elegidas."
+    "empty_filtered": "Ninguna nota para las asignaturas elegidas.",
+    "range": "mín. {min} · máx. {max}",
+    "documents": "Documentos del examen",
+    "document_subject": "Enunciado",
+    "document_correction": "Corrección",
+    "document_open": "Abrir el documento",
+    "attachment_not_collected": "Este documento aún no está disponible: la recogida de notas aún no se ha realizado.",
+    "attachment_unknown": "Este documento ya no está en las notas publicadas. Actualice la página e inténtelo de nuevo."
   },
   "emploi_du_temps": {
     "name": "Horario",
