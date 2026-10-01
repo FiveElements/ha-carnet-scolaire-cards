@@ -232,6 +232,40 @@ export const sharedStyles = css`
     font-weight: 600;
     color: var(--primary-text-color);
   }
+  /* Une date en petite page de calendrier : bandeau du mois, jour dessous.
+     Largeur fixe et etroite, pour que toutes les pages d'une liste
+     s'alignent et laissent la place au contenu. Le bandeau prend la couleur
+     primaire du theme, jamais la couleur de matiere : celle-ci reste un
+     accent de bordure. */
+  .page-calendrier {
+    display: inline-flex;
+    flex-direction: column;
+    width: 2.6em;
+    flex: none;
+    border: 1px solid var(--divider-color);
+    border-radius: 4px;
+    overflow: hidden;
+    text-align: center;
+    line-height: 1.15;
+    font-weight: 400;
+    vertical-align: middle;
+  }
+  .page-calendrier-mois {
+    background: var(--primary-color);
+    color: var(--text-primary-color);
+    font-size: 0.7em;
+    padding: 1px 0;
+    white-space: nowrap;
+  }
+  .page-calendrier-jour {
+    color: var(--primary-text-color);
+    font-size: 1.05em;
+    font-weight: 600;
+    padding: 1px 0 2px;
+  }
+  .row:has(.page-calendrier) {
+    align-items: center;
+  }
   .notice {
     color: var(--secondary-text-color);
     font-style: italic;

@@ -691,8 +691,9 @@ describe('carte notes — la date des notes et le filtre par matière', () => {
     expect(rows).toEqual(['# 16/20', '16/20', '# 12/20', '11/20', '13/20', '9/20']);
     // Sous un en-tête, la date remplace la matière ; Histoire, sans en-tête,
     // garde la sienne.
-    const primaries = [...(el.shadowRoot?.querySelectorAll('.row .primary') ?? [])].map((p) =>
-      p.textContent?.trim()
+    // Une page de calendrier se lit par son `aria-label`, la date en toutes lettres.
+    const primaries = [...(el.shadowRoot?.querySelectorAll('.row .primary') ?? [])].map(
+      (p) => p.querySelector('time')?.getAttribute('aria-label') ?? p.textContent?.trim()
     );
     expect(primaries).toEqual([
       'Maths',
@@ -718,7 +719,12 @@ describe('carte notes — la date des notes et le filtre par matière', () => {
     const note = [...(el.shadowRoot?.querySelectorAll('.row:not(.entete)') ?? [])].find((r) =>
       r.textContent?.includes('14,5/20')
     );
-    expect(note?.querySelector('.primary')?.textContent?.trim()).toBe('samedi 5 septembre');
+    const page = note?.querySelector('.primary time.page-calendrier');
+    expect(page?.getAttribute('aria-label')).toBe('samedi 5 septembre');
+    expect(page?.getAttribute('datetime')).toBe('2026-09-05');
+    // Deux lignes courtes : le mois abrégé, puis le jour.
+    expect(page?.querySelector('.page-calendrier-mois')?.textContent).toBe('sept.');
+    expect(page?.querySelector('.page-calendrier-jour')?.textContent).toBe('5');
     expect(note?.querySelector('.secondary')?.textContent?.trim()).toBe('coef. 2');
   });
 

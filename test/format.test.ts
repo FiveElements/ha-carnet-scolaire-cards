@@ -3,6 +3,7 @@ import {
   compareInstants,
   formatTimeWithDay,
   durationToMinutes,
+  formatCalendarPage,
   formatDayLabel,
   formatDuration,
   plainText,
@@ -309,5 +310,23 @@ describe('durationToMinutes', () => {
     expect(durationToMinutes('', 's')).toBeUndefined();
     expect(durationToMinutes(undefined, 's')).toBeUndefined();
     expect(durationToMinutes('-60', 's')).toBeUndefined();
+  });
+});
+
+describe('formatCalendarPage', () => {
+  it('rend le mois abrégé et le jour, pour une page de calendrier', () => {
+    expect(formatCalendarPage('2026-09-21', 'fr', 'Europe/Paris')).toEqual({
+      month: 'sept.',
+      day: '21',
+    });
+  });
+
+  it('garde le jour écrit d’une date seule, même dans un fuseau à décalage négatif', () => {
+    expect(formatCalendarPage('2026-09-01', 'fr', 'America/Martinique')?.day).toBe('1');
+  });
+
+  it('ne rend rien pour une valeur illisible', () => {
+    expect(formatCalendarPage('pas une date', 'fr', 'Europe/Paris')).toBeUndefined();
+    expect(formatCalendarPage(undefined, 'fr', 'Europe/Paris')).toBeUndefined();
   });
 });
