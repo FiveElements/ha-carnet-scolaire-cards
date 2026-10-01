@@ -54,24 +54,48 @@ subjects:
 
 L'ordre des sections dans le YAML ne change pas l'ordre d'affichage : la
 carte les rend toujours dans le même ordre, `sections` ne fait que choisir
-lesquelles paraissent. Une seule exception : avec un filtre `subjects`, les
-notes se rangent sous la moyenne de leur matière (voir plus bas).
+lesquelles paraissent. Une seule exception : quand `latest` et `subjects`
+sont affichées ensemble, les notes se rangent sous la moyenne de leur
+matière (voir [Ranger les notes par matière](#ranger-les-notes-par-matiere)).
 
 `title` et `entities` fonctionnent en plus sur toutes les cartes : voir
 [Deux options communes](../installation.md#deux-options-communes-a-toutes-les-cartes).
 
 ## Ce que montre chaque note
 
-Une ligne par note, la matière à gauche et la note à droite. Dessous :
+Une ligne par note, la note à droite. Dessous :
 
 - l'**intitulé** que le professeur a donné au devoir — « Contrôle n° 1
   (chapitre 1) », « Interrogation 2 » — sur sa propre ligne, quand il en a
   donné un ;
-- puis le coefficient, la date si `show_date` est activée, et la
-  **moyenne de la classe** à ce devoir.
+- puis le coefficient, la date si `show_date` est activée, la **moyenne de
+  la classe** à ce devoir, et la note la plus basse et la plus haute de la
+  classe (« min. 5 · max. 20 ») ;
+- enfin les **documents** du devoir, quand le professeur en a déposé : une
+  pastille « Sujet », une pastille « Corrigé ». Le nom du fichier s'affiche
+  au survol.
 
-Le sujet et le corrigé joints au devoir sur PRONOTE ne sont pas encore
-affichés : l'intégration ne les publie pas encore sur les notes.
+Un document s'ouvre comme une pièce jointe de devoir : l'adresse du
+fichier n'est demandée à l'intégration qu'au moment du clic, par
+`carnet_scolaire.get_attachment_url`, et n'est jamais publiée dans un
+attribut. Ces pastilles n'apparaissent qu'avec une version de
+l'intégration qui publie `attachment_refs` sur les notes. Avant, la ligne
+s'affiche simplement sans elles.
+
+## Ranger les notes par matière
+
+Quand `latest` et `subjects` sont affichées ensemble, avec ou sans filtre,
+la carte range les notes par matière. La moyenne de chaque matière devient
+un **en-tête** : nom et moyenne de l'élève en plus grand, moyenne de la
+classe dessous. Les notes de cette matière se rangent sous cet en-tête,
+les plus récentes d'abord, puis vient la matière suivante. Chaque note y
+est nommée par la **date** du devoir, en petite page de calendrier, plutôt
+que par sa matière, que l'en-tête dit déjà, et ce même sans `show_date`.
+Une note dont la matière n'a pas encore de moyenne publiée suit les
+groupes, sans en-tête, et garde sa matière.
+
+`limit` compte toujours les dernières notes de toute la carte, pas celles
+de chaque matière : une matière sans note récente garde son en-tête, seul.
 
 ## Filtrer les matières
 
@@ -85,15 +109,8 @@ bulletin. Il ne touche **pas** la moyenne générale ni celle de la classe :
 elles portent sur toutes les matières. Une carte filtrée sur une seule
 matière affiche donc encore la moyenne générale.
 
-Sur une carte filtrée qui montre à la fois `latest` et `subjects`, la
-carte suit une matière en détail. La moyenne de chaque matière devient un
-**en-tête** : nom et moyenne de l'élève en plus grand, moyenne de la
-classe dessous. Les notes de cette matière se rangent sous cet en-tête,
-les plus récentes d'abord. Chacune y est nommée par la **date** du devoir
-plutôt que par sa matière, que l'en-tête dit déjà, et ce même sans
-`show_date`. Une note dont la matière n'a pas encore de moyenne publiée
-suit les groupes, sans en-tête, et garde sa matière. Sans filtre, rien ne
-change : les dernières notes, puis les moyennes par matière.
+Une carte filtrée range ses notes par matière comme les autres (voir
+[Ranger les notes par matière](#ranger-les-notes-par-matiere)).
 
 Une liste vide revient à ne rien filtrer. Si le filtre écarte toutes les
 notes, la carte affiche « Aucune note pour les matières choisies » plutôt

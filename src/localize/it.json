@@ -115,7 +115,14 @@
     "show_date": "Mostra la data dei voti",
     "subjects": "Materie visualizzate",
     "subjects_helper": "Lascia vuoto per tutte le materie. Maiuscole e accenti non contano.",
-    "empty_filtered": "Nessun voto per le materie scelte."
+    "empty_filtered": "Nessun voto per le materie scelte.",
+    "range": "min. {min} · max. {max}",
+    "documents": "Documenti della verifica",
+    "document_subject": "Testo",
+    "document_correction": "Correzione",
+    "document_open": "Apri il documento",
+    "attachment_not_collected": "Questo documento non è ancora disponibile: la raccolta dei voti non è ancora avvenuta.",
+    "attachment_unknown": "Questo documento non è più tra i voti pubblicati. Aggiorna la pagina e riprova."
   },
   "emploi_du_temps": {
     "name": "Orario",
