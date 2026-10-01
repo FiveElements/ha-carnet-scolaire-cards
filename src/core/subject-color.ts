@@ -147,6 +147,13 @@ const fold = (value: string | undefined): string =>
   (value ?? '').normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
 
 /**
+ * La clé de comparaison d'une matière, pour qu'une carte qui rapproche deux
+ * familles par leur matière (une note et la moyenne qui porte sa couleur)
+ * compare comme le filtre et la table de couleurs, et pas autrement.
+ */
+export const subjectKey = fold;
+
+/**
  * Le filtre de matières d'une carte, avec la même comparaison que la table de
  * couleurs : sans casse, sans accents, sans espaces de bord. Une liste absente
  * ou vide laisse tout passer.

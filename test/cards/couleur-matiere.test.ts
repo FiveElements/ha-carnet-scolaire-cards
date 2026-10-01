@@ -580,6 +580,43 @@ describe('code couleur des matières — la table de l’utilisateur', () => {
     expect(el.shadowRoot?.textContent).toContain('Exercices 3 à 7');
   });
 
+  it('colore chaque note de la couleur de la moyenne de sa matière', async () => {
+    // Le protocole ne donne aucune couleur aux notes : elles l'empruntent à la
+    // moyenne, rapprochée par la matière sans casse ni accents. Une note dont
+    // la matière n'a pas de moyenne publiée reste alignée, sans couleur.
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      makeHass([
+        {
+          key: 'sensor:grades',
+          entity_id: 'sensor.abc_notes',
+          device: 'dev_enfant',
+          state: '2',
+          attributes: {
+            items: [
+              { subject: 'MATHÉMATIQUES', value: 15, out_of: 20, date: '2026-09-06' },
+              { subject: 'Histoire', value: 11, out_of: 20, date: '2026-09-05' },
+            ],
+          },
+        },
+        {
+          key: 'sensor:averages',
+          entity_id: 'sensor.abc_moyennes_par_matiere',
+          device: 'dev_enfant',
+          state: '1',
+          attributes: {
+            items: [
+              { subject: 'Mathematiques', student: 15, out_of: 20, background_color: '#1e88e5' },
+            ],
+          },
+        },
+      ])
+    );
+    expect(accents(el)).toEqual(['#1e88e5', null]);
+    expect(el.shadowRoot?.textContent).toContain('15/20');
+  });
+
   it('colore les moyennes par matière depuis la table', async () => {
     const el = await mountCard(
       'carnet-scolaire-notes',

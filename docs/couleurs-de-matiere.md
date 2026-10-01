@@ -29,7 +29,8 @@ Mais elle ne l'est pas partout, et le détail décide de ce que vous avez à
 | moyennes par matière | **oui** | mesuré, 4 sur 4 |
 | prochain cours | **non** | mesuré : la clé est absente des attributs |
 | évaluations | **non** | lu dans le code de l'intégration, liste vide à la mesure |
-| notes individuelles, bulletin | jamais | PRONOTE colore la matière, pas la note |
+| notes individuelles | empruntée | PRONOTE colore la matière, pas la note : la carte prend celle de la moyenne de la même matière |
+| bulletin | jamais | aucune couleur côté protocole |
 
 La distinction entre « mesuré » et « lu dans le code » n'est pas de la
 coquetterie. Les quatre premières lignes ont été vérifiées sur une instance
@@ -86,9 +87,9 @@ Ce qu'il y a à faire, et ce qu'il ne faut **pas** faire :
   nom de champ sur ce palier-là. Tant que la liste était vide, rien ne
   permettait de vérifier qu'il l'écrit tout court. Mesuré le 24 septembre
   2026 : les quatre moyennes par matière portent toutes leur couleur, en
-  hexadécimal strict. Rappel de portée — cette carte ne colore **que** les
-  moyennes par matière ; la liste des notes et le bulletin restent sans
-  couleur, avec ou sans table.
+  hexadécimal strict. Rappel de portée — les moyennes par matière portent
+  la couleur, chaque note prend celle de la moyenne de sa matière, et le
+  bulletin reste sans couleur, avec ou sans table.
 
 **Où la couleur se place, carte par carte.** Le placement n'est pas uniforme,
 et ce n'est pas un oubli :

@@ -54,10 +54,24 @@ subjects:
 
 L'ordre des sections dans le YAML ne change pas l'ordre d'affichage : la
 carte les rend toujours dans le même ordre, `sections` ne fait que choisir
-lesquelles paraissent.
+lesquelles paraissent. Une seule exception : avec un filtre `subjects`, les
+notes se rangent sous la moyenne de leur matière (voir plus bas).
 
 `title` et `entities` fonctionnent en plus sur toutes les cartes : voir
 [Deux options communes](../installation.md#deux-options-communes-a-toutes-les-cartes).
+
+## Ce que montre chaque note
+
+Une ligne par note, la matière à gauche et la note à droite. Dessous :
+
+- l'**intitulé** que le professeur a donné au devoir — « Contrôle n° 1
+  (chapitre 1) », « Interrogation 2 » — sur sa propre ligne, quand il en a
+  donné un ;
+- puis le coefficient, la date si `show_date` est activée, et la
+  **moyenne de la classe** à ce devoir.
+
+Le sujet et le corrigé joints au devoir sur PRONOTE ne sont pas encore
+affichés : l'intégration ne les publie pas encore sur les notes.
 
 ## Filtrer les matières
 
@@ -71,6 +85,14 @@ bulletin. Il ne touche **pas** la moyenne générale ni celle de la classe :
 elles portent sur toutes les matières. Une carte filtrée sur une seule
 matière affiche donc encore la moyenne générale.
 
+Sur une carte filtrée qui montre à la fois `latest` et `subjects`, la
+carte suit une matière en détail. La moyenne de chaque matière devient un
+**en-tête** : nom et moyenne de l'élève en plus grand, moyenne de la
+classe dessous. Les notes de cette matière se rangent sous cet en-tête,
+les plus récentes d'abord. Une note dont la matière n'a pas encore de
+moyenne publiée suit les groupes, sans en-tête. Sans filtre, rien ne
+change : les dernières notes, puis les moyennes par matière.
+
 Une liste vide revient à ne rien filtrer. Si le filtre écarte toutes les
 notes, la carte affiche « Aucune note pour les matières choisies » plutôt
 que « Aucune note pour cette période » : des notes existent, mais dans
@@ -78,8 +100,8 @@ d'autres matières.
 
 ## Les couleurs de matière
 
-Chaque moyenne par matière porte un filet vertical à gauche, dans la
-couleur de sa matière.
+Chaque moyenne par matière, et chaque note, porte un filet vertical à
+gauche, dans la couleur de sa matière.
 
 Depuis la version 0.0.13 de l'intégration, cette couleur vient
 **du serveur** : vous n'avez rien à écrire pour la voir. Une table
@@ -88,10 +110,12 @@ Depuis la version 0.0.13 de l'intégration, cette couleur vient
 déplaît — et le serveur **gagne** sur votre table, donc une entrée qui
 double une couleur reçue ne fait plus rien.
 
-Les **notes individuelles** n'en portent pas : PRONOTE colore la matière,
-pas la note. Le filet d'une moyenne se lit donc comme celui d'un créneau
-d'emploi du temps, et une note reste sans accent — ce n'est pas un défaut
-de collecte.
+Les **notes individuelles** n'ont pas de couleur côté protocole : PRONOTE
+colore la matière, pas la note. La carte leur donne donc celle de la
+moyenne de la même matière, rapprochée sans casse ni accents, et votre
+table en secours. Une note dont la matière n'a pas encore de moyenne
+publiée, et que la table ne nomme pas, reste sans accent — ce n'est pas un
+défaut de collecte.
 
 ```yaml
 type: custom:carnet-scolaire-notes

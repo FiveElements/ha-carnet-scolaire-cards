@@ -3,7 +3,7 @@ import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx, Translate } from
 import { compareInstants, formatDayLabel, formatGrade } from '../core/format';
 import { emptyState, listRow, sourcesState } from '../core/ui/parts';
 import { latestFirst, listAttr, sortedBy } from '../core/list';
-import { subjectAccent, subjectFilter } from '../core/subject-color';
+import { subjectAccent, subjectFilter, subjectKey } from '../core/subject-color';
 
 type Section = 'average' | 'latest' | 'subjects' | 'report_card';
 
@@ -44,10 +44,9 @@ interface Config extends CarnetCardConfig {
    * quatre moyennes par matière portent toutes `background_color`, en
    * hexadécimal strict.
    *
-   * La portée est plus étroite ici que sur les autres cartes : seule la
-   * section « moyennes par matière » est colorée. Les notes individuelles et
-   * le bulletin n'ont pas de couleur côté protocole, et n'en auront pas —
-   * voir `Average` et `NO_COLOR`.
+   * Les notes individuelles n'ont pas de couleur côté protocole : elles
+   * prennent celle de la moyenne de la même matière, et cette table en
+   * secours. Le bulletin reste sans couleur — voir `Average` et `NO_COLOR`.
    *
    * Absente du formulaire d'éditeur, et pour une raison : aucun sélecteur
    * `ha-form` ne rend correctement un dictionnaire ouvert dont les clés sont
@@ -71,6 +70,12 @@ interface Grade {
   coefficient?: number;
   date?: string;
   class_average?: number | string;
+  /**
+   * L'intitulé que le professeur a donné au devoir noté — « Contrôle n° 1
+   * (chapitre 1) », « Interrogation 1 ». `_grade_dict` le publie sous ce
+   * nom, qui dit mal ce qu'il porte : ce n'est pas une appréciation.
+   */
+  comment?: string;
   status?: string;
 }
 
@@ -88,7 +93,7 @@ interface Average {
    *
    * C'est la **seule** famille de cette carte qui en porte une : les notes
    * individuelles n'ont pas de couleur côté protocole, et le bulletin non
-   * plus.
+   * plus. Les notes empruntent donc celle-ci, rapprochée par la matière.
    */
   background_color?: unknown;
 }
@@ -96,8 +101,8 @@ interface Average {
 /**
  * Toutes les lignes de cette carte réservent la gouttière de couleur, y
  * compris celles qui ne portent pas de matière (« Élève », « Classe »,
- * « Période ») et celles dont la famille n'en a pas côté protocole (les notes
- * individuelles, le bulletin).
+ * « Période »), celles du bulletin, qui n'en a pas côté protocole, et les
+ * notes d'une matière sans moyenne publiée, qui n'ont pas où l'emprunter.
  *
  * La raison est l'alignement, et elle est propre à cette carte : la section
  * « par matière » suit immédiatement la liste des notes **sans intertitre**.
@@ -205,6 +210,16 @@ export const SPEC: CardSpec<Config> = {
       }
     }
 
+    // Une carte filtrée qui montre les notes ET les moyennes suit une matière
+    // en détail : chaque moyenne y devient l'en-tête de sa matière, et les
+    // notes de cette matière se rangent dessous. Ailleurs, l'ordre historique
+    // reste — changer la disposition des cartes existantes n'était pas
+    // demandé. Les lignes se construisent donc à part, avec leur matière.
+    const grouped = filtered && wanted.includes('latest') && wanted.includes('subjects');
+    const latestBlocks: TemplateResult[] = [];
+    const gradeRows: { key: string; row: TemplateResult }[] = [];
+    const averageRows: { key: string; row: TemplateResult }[] = [];
+
     if (wanted.includes('latest')) {
       // Une sentinelle (|1 à |8) rend l'état non numérique : le motif est
       // dans l'attribut `status`, et c'est lui qu'il faut montrer — jamais
@@ -215,7 +230,7 @@ export const SPEC: CardSpec<Config> = {
       // doublon plutôt qu'un oubli.
       const latestStatus = ctx.attr<string>(LATEST, 'status');
       if (ctx.status(LATEST) === 'unavailable' && latestStatus) {
-        blocks.push(
+        latestBlocks.push(
           listRow({
             // `notes.name` est le nom de la carte, pas le motif d'une note :
             // un libellé trompeur en repli. `notes.latest_grade` nomme
@@ -236,27 +251,43 @@ export const SPEC: CardSpec<Config> = {
         (a, b) => compareInstants(a.date, b.date)
       );
       const items = latestFirst<Grade>(chronological, c.limit ?? 8);
+      // La couleur d'une note est celle de la moyenne de sa matière : le
+      // protocole n'en donne pas aux notes. Lue même quand la section
+      // « par matière » n'est pas affichée.
+      const colorOf = new Map<string, unknown>();
+      for (const a of listAttr<Average>(ctx.attr(AVERAGES, 'items'))) {
+        const k = subjectKey(a.subject);
+        if (k !== '' && !colorOf.has(k)) colorOf.set(k, a.background_color);
+      }
       for (const g of items) {
-        blocks.push(
-          listRow({
+        const facts = [
+          g.coefficient != null
+            ? ctx.t('notes.coefficient', {
+                value: g.coefficient.toLocaleString(ctx.language),
+              })
+            : '',
+          c.show_date === true && g.date
+            ? formatDayLabel(g.date, ctx.language, ctx.timeZone)
+            : '',
+          g.class_average != null
+            ? `${ctx.t('notes.class')} ${formatGrade(g.class_average, g.out_of, ctx.language)}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        // L'intitulé sur sa propre ligne, au-dessus des faits chiffrés.
+        const title = typeof g.comment === 'string' ? g.comment.trim() : '';
+        gradeRows.push({
+          key: subjectKey(g.subject),
+          row: listRow({
             primary: g.subject ?? '—',
-            secondary:
-              [
-                g.coefficient != null
-                  ? ctx.t('notes.coefficient', {
-                      value: g.coefficient.toLocaleString(ctx.language),
-                    })
-                  : '',
-                c.show_date === true && g.date
-                  ? formatDayLabel(g.date, ctx.language, ctx.timeZone)
-                  : '',
-              ]
-                .filter(Boolean)
-                .join(' · ') || undefined,
+            secondary: [title, facts].filter(Boolean).join('\n') || undefined,
             trailing: g.status ?? formatGrade(g.value, g.out_of, ctx.language),
-            accent: NO_COLOR,
-          })
-        );
+            accent:
+              subjectAccent(colorOf.get(subjectKey(g.subject)), g.subject, c.subject_colors) ??
+              NO_COLOR,
+          }),
+        });
       }
     }
 
@@ -265,20 +296,37 @@ export const SPEC: CardSpec<Config> = {
         keep(a.subject)
       );
       for (const a of items) {
-        blocks.push(
-          listRow({
+        averageRows.push({
+          key: subjectKey(a.subject),
+          row: listRow({
             primary: a.subject ?? '—',
             secondary:
               a.class_average != null
                 ? `${ctx.t('notes.class')} ${formatGrade(a.class_average, a.out_of, ctx.language)}`
                 : undefined,
             trailing: formatGrade(a.student, a.out_of, ctx.language),
-            // La seule ligne colorée de cette carte, quand l'intégration
-            // publie le champ.
+            // La couleur du serveur, quand l'intégration publie le champ.
             accent: subjectAccent(a.background_color, a.subject, c.subject_colors) ?? NO_COLOR,
-          })
-        );
+            heading: grouped,
+          }),
+        });
       }
+    }
+
+    blocks.push(...latestBlocks);
+    if (grouped) {
+      // Chaque matière : son en-tête, puis ses notes. Une note dont la
+      // matière n'a pas de moyenne publiée n'est pas perdue pour autant :
+      // elle suit les groupes, sans en-tête.
+      const placed = new Set<string>();
+      for (const a of averageRows) {
+        if (placed.has(a.key)) continue;
+        placed.add(a.key);
+        blocks.push(a.row, ...gradeRows.filter((g) => g.key === a.key).map((g) => g.row));
+      }
+      blocks.push(...gradeRows.filter((g) => !placed.has(g.key)).map((g) => g.row));
+    } else {
+      blocks.push(...gradeRows.map((g) => g.row), ...averageRows.map((a) => a.row));
     }
 
     if (wanted.includes('report_card') && ctx.status(REPORT) === 'ok') {
