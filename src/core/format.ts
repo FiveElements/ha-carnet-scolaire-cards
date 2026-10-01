@@ -101,6 +101,26 @@ export function formatDayLabel(
   }).format(d);
 }
 
+/**
+ * Les deux lignes d'une page de calendrier : le mois abrégé (« sept. ») et
+ * le numéro du jour (« 21 »). Même règle de fuseau que `formatDayLabel`,
+ * pour que la page et le libellé long disent toujours le même jour.
+ * `undefined` sur une valeur illisible : l'appelant n'affiche alors rien.
+ */
+export function formatCalendarPage(
+  value: string | undefined,
+  language: string,
+  timeZone: string
+): { month: string; day: string } | undefined {
+  const d = parseTimestamp(value?.trim());
+  if (!d) return undefined;
+  const zone = isDateOnly(value) ? 'UTC' : timeZone;
+  return {
+    month: dateTimeFormat(language, { month: 'short', timeZone: zone }).format(d),
+    day: dateTimeFormat(language, { day: 'numeric', timeZone: zone }).format(d),
+  };
+}
+
 export function formatRelative(
   value: string | undefined,
   language: string,

@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import type { CardSpec, EntityKey, CarnetCardConfig, RenderCtx, Translate } from '../core/types';
-import { compareInstants, formatDayLabel, formatGrade } from '../core/format';
-import { emptyState, listRow, sourcesState } from '../core/ui/parts';
+import { compareInstants, formatCalendarPage, formatDayLabel, formatGrade } from '../core/format';
+import { calendarPage, emptyState, listRow, sourcesState } from '../core/ui/parts';
 import { latestFirst, listAttr, sortedBy } from '../core/list';
 import { subjectAccent, subjectFilter, subjectKey } from '../core/subject-color';
 
@@ -269,6 +269,12 @@ export const SPEC: CardSpec<Config> = {
         // `colorOf` porte toutes les moyennes, et les notes sont déjà
         // filtrées : y figurer, c'est avoir un en-tête.
         const underHeading = grouped && key !== '' && colorOf.has(key) && date !== '';
+        // La date en page de calendrier, étroite : le libellé long reste
+        // au survol. Repli sur le libellé long si la page est illisible.
+        const dateCell = (iso: string | undefined, label: string) => {
+          const page = formatCalendarPage(iso, ctx.language, ctx.timeZone);
+          return page && iso ? calendarPage(page, label, iso.trim()) : label;
+        };
         const facts = [
           g.coefficient != null
             ? ctx.t('notes.coefficient', {
@@ -287,7 +293,7 @@ export const SPEC: CardSpec<Config> = {
         gradeRows.push({
           key,
           row: listRow({
-            primary: underHeading ? date : (g.subject ?? '—'),
+            primary: underHeading ? dateCell(g.date, date) : (g.subject ?? '—'),
             secondary: [title, facts].filter(Boolean).join('\n') || undefined,
             trailing: g.status ?? formatGrade(g.value, g.out_of, ctx.language),
             accent:

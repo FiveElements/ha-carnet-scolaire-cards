@@ -8,6 +8,23 @@ export const chip = (label: string, tone: Tone = 'neutral'): TemplateResult =>
   html`<span class="chip ${tone === 'neutral' ? '' : tone}">${label}</span>`;
 
 /** État « vide » : l'information EST le vide. Message fourni par la carte. */
+/**
+ * Une date en petite page de calendrier : le mois dans un bandeau, le jour
+ * dessous. Étroite exprès — elle prend la place d'un intitulé de ligne, et
+ * le contenu à côté a besoin de la largeur. `label` est la date en toutes
+ * lettres : elle va dans `title` et `aria-label`, puisque deux fragments
+ * abrégés ne se lisent pas à voix haute comme une date.
+ */
+export const calendarPage = (
+  page: { month: string; day: string },
+  label: string,
+  datetime: string
+): TemplateResult =>
+  html`<time class="page-calendrier" datetime=${datetime} title=${label} aria-label=${label}
+    ><span class="page-calendrier-mois" aria-hidden="true">${page.month}</span
+    ><span class="page-calendrier-jour" aria-hidden="true">${page.day}</span></time
+  >`;
+
 export const emptyState = (message: string): TemplateResult =>
   html`<div class="notice">${message}</div>`;
 
