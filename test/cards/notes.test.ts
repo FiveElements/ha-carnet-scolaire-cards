@@ -814,6 +814,43 @@ const espionnerOuverture = (onglet: ReturnType<typeof faireOnglet>) =>
 
 
 describe('carte notes — min/max de la classe et documents du devoir', () => {
+  it('affiche l’appréciation du professeur par défaut, en italique sous l’intitulé', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      noteAvec({ remark: 'Bon travail, continuez.', min: 5, max: 20 })
+    );
+    const secondary = el.shadowRoot?.querySelector('.row .secondary');
+    expect(secondary?.querySelector('em.notes-appreciation')?.textContent).toBe(
+      'Bon travail, continuez.'
+    );
+    expect(secondary?.textContent?.trim()).toBe(
+      'Contrôle n° 1\nBon travail, continuez.\nClasse 13,04/20 · min. 5 · max. 20'
+    );
+  });
+
+  it('masque l’appréciation avec show_remark: false', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'], show_remark: false },
+      noteAvec({ remark: 'Bon travail, continuez.' })
+    );
+    expect(text(el)).toContain('Contrôle n° 1');
+    expect(text(el)).not.toContain('Bon travail');
+  });
+
+  it('n’ajoute aucune ligne quand le professeur n’a rien écrit', async () => {
+    const el = await mountCard(
+      'carnet-scolaire-notes',
+      { device_id: 'dev_enfant', sections: ['latest'] },
+      noteAvec({ remark: null })
+    );
+    expect(el.shadowRoot?.querySelector('em.notes-appreciation')).toBeNull();
+    expect(el.shadowRoot?.querySelector('.row .secondary')?.textContent?.trim()).toBe(
+      'Contrôle n° 1\nClasse 13,04/20'
+    );
+  });
+
   it('affiche la note la plus basse et la plus haute de la classe', async () => {
     const el = await mountCard(
       'carnet-scolaire-notes',

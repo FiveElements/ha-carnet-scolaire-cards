@@ -26,6 +26,7 @@ sections:
 | `sections` | `average`, `latest`, `subjects` | Blocs affichés, dans cet ordre : `average` (moyenne de l'élève et de la classe), `latest` (dernières notes), `subjects` (moyennes par matière), `report_card` (bulletin). |
 | `limit` | `8` | Nombre de dernières notes affichées. |
 | `show_date` | désactivée | Ajoute la date de chaque note aux dernières notes, après le coefficient. |
+| `show_remark` | activée | Affiche l'appréciation du professeur sur la note, en italique sous l'intitulé du devoir. `false` la masque. |
 | `subjects` | toutes | Matières montrées dans les dernières notes, les moyennes par matière et le bulletin. Voir plus bas. |
 | `subject_colors` | — | Table matière → couleur. **En YAML uniquement**, voir plus bas. |
 
@@ -47,6 +48,7 @@ sections:
   - report_card
 limit: 10
 show_date: true
+show_remark: true
 subjects:
   - Mathématiques
   - Anglais
@@ -68,6 +70,8 @@ Une ligne par note, la note à droite. Dessous :
 - l'**intitulé** que le professeur a donné au devoir — « Contrôle n° 1
   (chapitre 1) », « Interrogation 2 » — sur sa propre ligne, quand il en a
   donné un ;
+- l'**appréciation** du professeur sur cette note, en italique, quand il en
+  a écrit une et que `show_remark` n'est pas désactivée ;
 - puis le coefficient, la date si `show_date` est activée, la **moyenne de
   la classe** à ce devoir, et la note la plus basse et la plus haute de la
   classe (« min. 5 · max. 20 ») ;
