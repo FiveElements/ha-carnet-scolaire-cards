@@ -113,6 +113,7 @@
     "period": "Periodo",
     "latest_grade": "Ultimo voto",
     "show_date": "Mostra la data dei voti",
+    "show_remark": "Mostrare il giudizio del docente",
     "subjects": "Materie visualizzate",
     "subjects_helper": "Lascia vuoto per tutte le materie. Maiuscole e accenti non contano.",
     "empty_filtered": "Nessun voto per le materie scelte.",

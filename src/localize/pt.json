@@ -113,6 +113,7 @@
     "period": "Período",
     "latest_grade": "Última nota",
     "show_date": "Mostrar a data das notas",
+    "show_remark": "Mostrar a apreciação do professor",
     "subjects": "Disciplinas mostradas",
     "subjects_helper": "Deixe vazio para todas as disciplinas. Maiúsculas e acentos não contam.",
     "empty_filtered": "Nenhuma nota para as disciplinas escolhidas.",

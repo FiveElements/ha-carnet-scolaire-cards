@@ -19,6 +19,13 @@ interface Config extends CarnetCardConfig {
    */
   show_date?: boolean;
   /**
+   * Affiche l'appréciation du professeur sur la note (`remark`), en italique
+   * sous l'intitulé du devoir. **Activée par défaut**, sur demande du
+   * propriétaire : seul `false` la masque, comme `show_attachments` sur la
+   * carte devoirs.
+   */
+  show_remark?: boolean;
+  /**
    * Les matières à montrer, dans les dernières notes, les moyennes par
    * matière et le bulletin. Absente ou vide : toutes. La moyenne générale et
    * celle de la classe ne sont pas des matières, le filtre ne les touche pas.
@@ -77,6 +84,13 @@ interface Grade {
    * nom, qui dit mal ce qu'il porte : ce n'est pas une appréciation.
    */
   comment?: string;
+  /**
+   * L'appréciation libre du professeur sur CETTE note (`commentaireSurNote`
+   * côté PRONOTE), distincte de `comment`, l'intitulé commun à la classe.
+   * L'intégration publie `null` quand il n'a rien écrit — le cas le plus
+   * fréquent — jamais une chaîne vide.
+   */
+  remark?: string | null;
   /** La plus basse et la plus haute note de la classe à ce devoir. */
   min?: number | string;
   max?: number | string;
@@ -189,7 +203,7 @@ export const SPEC: CardSpec<Config> = {
   key: 'notes',
   scope: 'child',
   size: 6,
-  stub: { sections: ['average', 'latest', 'subjects'] },
+  stub: { sections: ['average', 'latest', 'subjects'], show_remark: true },
   requires: () => [],
   requiresAny: () => [OVERALL, GRADES, AVERAGES],
   optional: () => [CLASS, LATEST, PERIOD, REPORT],
@@ -212,6 +226,7 @@ export const SPEC: CardSpec<Config> = {
       },
       { name: 'limit', selector: { number: { min: 1, max: 50, mode: 'box' } } },
       { name: 'show_date', selector: { boolean: {} } },
+      { name: 'show_remark', selector: { boolean: {} } },
       {
         name: 'subjects',
         // Une saisie libre : le formulaire ne connaît pas les matières de
@@ -360,8 +375,14 @@ export const SPEC: CardSpec<Config> = {
         const k = subjectKey(a.subject);
         if (k !== '' && !colorOf.has(k)) colorOf.set(k, a.background_color);
       }
-      const secondaryOf = (texte: string, docs: GradeDocument[]) =>
-        docs.length === 0 ? texte || undefined : html`${texte}${documentsRow(docs)}`;
+      // Les lignes du détail, séparées par de vrais retours : `.secondary`
+      // est en `pre-line`. Une ligne peut être un gabarit (l'appréciation, en
+      // italique), d'où la liste plutôt qu'une chaîne jointe.
+      const secondaryOf = (lignes: (string | TemplateResult)[], docs: GradeDocument[]) => {
+        const pleines = lignes.filter((l) => l !== '');
+        if (pleines.length === 0 && docs.length === 0) return undefined;
+        return html`${pleines.map((l, i) => (i === 0 ? l : html`${'\n'}${l}`))}${documentsRow(docs)}`;
+      };
       for (const g of items) {
         const key = subjectKey(g.subject);
         const date = g.date ? formatDayLabel(g.date, ctx.language, ctx.timeZone) : '';
@@ -399,12 +420,16 @@ export const SPEC: CardSpec<Config> = {
           .join(' · ');
         // L'intitulé sur sa propre ligne, au-dessus des faits chiffrés.
         const title = typeof g.comment === 'string' ? g.comment.trim() : '';
+        // L'appréciation du professeur, sous l'intitulé, en italique pour se
+        // distinguer de lui : l'un est le nom du devoir, l'autre un avis.
+        const remark =
+          c.show_remark !== false && typeof g.remark === 'string' ? g.remark.trim() : '';
         gradeRows.push({
           key,
           row: listRow({
             primary: underHeading ? dateCell(g.date, date) : (g.subject ?? '—'),
             secondary: secondaryOf(
-              [title, facts].filter(Boolean).join('\n'),
+              [title, remark === '' ? '' : html`<em class="notes-appreciation">${remark}</em>`, facts],
               documentsOf(g.attachment_refs)
             ),
             trailing: g.status ?? formatGrade(g.value, g.out_of, ctx.language),

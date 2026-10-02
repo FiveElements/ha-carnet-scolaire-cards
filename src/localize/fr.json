@@ -113,6 +113,7 @@
     "period": "Période",
     "latest_grade": "Dernière note",
     "show_date": "Afficher la date des notes",
+    "show_remark": "Afficher l’appréciation du professeur",
     "subjects": "Matières affichées",
     "subjects_helper": "Laissez vide pour toutes les matières. La casse et les accents ne comptent pas.",
     "empty_filtered": "Aucune note pour les matières choisies.",
