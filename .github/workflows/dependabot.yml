@@ -1,0 +1,45 @@
+name: Dependabot
+
+# Arme la fusion automatique des demandes de Dependabot. Ce flux ne fusionne
+# rien lui-même : il demande à GitHub de fusionner QUAND les vérifications
+# exigées par la règle de `main` sont vertes (`build`, `hacs` et les deux
+# analyses CodeQL). Sans cette règle, `--auto` fusionnerait sur-le-champ.
+#
+# Une seule exception : une montée MAJEURE de `lit`. C'est la seule
+# dépendance d'exécution, elle part dans le bundle que les parents
+# installent, et une majeure se lit avant de partir.
+#
+# Le titre de Dependabot est en anglais ; le sujet du commit de fusion est
+# réécrit en français, puisque c'est lui qui reste dans l'historique.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  fusion-auto:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v3
+      - if: >-
+          !(contains(format(', {0}, ', steps.meta.outputs.dependency-names), ', lit, ')
+          && steps.meta.outputs.update-type == 'version-update:semver-major')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          NAMES: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          prefix="${TITLE%%:*}"
+          [ "$prefix" = "$TITLE" ] && prefix="chore(deps)"
+          gh pr merge --auto --squash "$PR_URL" \
+            --subject "${prefix}: mise à jour de ${NAMES} (#${PR_NUMBER})" \
+            --body "Fusion automatique d'une demande Dependabot, après vérifications vertes."
