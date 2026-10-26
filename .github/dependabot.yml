@@ -8,9 +8,10 @@ version: 2
 # d'exécution : il est empaqueté dans le bundle publié, donc sa montée change
 # ce que les utilisateurs installent, et mérite d'être lue seule.
 #
-# Dependabot écrit ses titres en anglais (« bump … from … to … ») et ne sait
-# pas faire autrement. Ce dépôt publie ses messages de commit en français :
-# retitrez à la fusion.
+# Les demandes sont fusionnées automatiquement dès que les vérifications
+# exigées sur `main` sont vertes (`workflows/dependabot.yml`), sauf une montée
+# MAJEURE de `lit`, qui attend une relecture. Ce flux réécrit aussi en
+# français le sujet du commit de fusion, puisque Dependabot titre en anglais.
 
 updates:
   - package-ecosystem: npm
