@@ -7,7 +7,7 @@ Installez et configurez d'abord cette intégration : les cartes se
 contentent de lire les entités qu'elle crée, elles ne collectent rien
 par elles-mêmes.
 
-**Version minimale de Home Assistant : 2026.9.0.** C'est ce que déclare
+**Version minimale de Home Assistant : 2026.10.0.** C'est ce que déclare
 le fichier `hacs.json` du dépôt, et HACS refuse l'installation en deçà.
 
 ## Installer par HACS (dépôt personnalisé)

@@ -47,7 +47,7 @@ body:
       description: >-
         *Paramètres → Système → Réparations → ⋯ → Informations système*, ligne
         « Core ».
-      placeholder: "2026.9.1"
+      placeholder: "2026.10.1"
     validations:
       required: true
 

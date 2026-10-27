@@ -2,7 +2,7 @@
 
 # Carnet scolaire — Cartes Lovelace pour Home Assistant
 [![Version](https://img.shields.io/github/v/release/FiveElements/ha-carnet-scolaire-cards?style=flat-square&label=version)](https://github.com/FiveElements/ha-carnet-scolaire-cards/releases)
-![Home Assistant 2026.9.0 minimum](https://img.shields.io/badge/Home%20Assistant-2026.9.0%2B-41BDF5?style=flat-square&logo=homeassistant&logoColor=white)
+![Home Assistant 2026.10.0 minimum](https://img.shields.io/badge/Home%20Assistant-2026.10.0%2B-41BDF5?style=flat-square&logo=homeassistant&logoColor=white)
 [![validate](https://img.shields.io/github/actions/workflow/status/FiveElements/ha-carnet-scolaire-cards/validate.yml?branch=main&style=flat-square&label=validate)](https://github.com/FiveElements/ha-carnet-scolaire-cards/actions/workflows/validate.yml)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/FiveElements/ha-carnet-scolaire-cards/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/FiveElements/ha-carnet-scolaire-cards/actions/workflows/codeql.yml)
 [![HACS](https://img.shields.io/github/actions/workflow/status/FiveElements/ha-carnet-scolaire-cards/hacs.yml?branch=main&style=flat-square&label=HACS)](https://github.com/FiveElements/ha-carnet-scolaire-cards/actions/workflows/hacs.yml)
