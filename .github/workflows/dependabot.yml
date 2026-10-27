@@ -27,7 +27,7 @@ jobs:
       pull-requests: write
     steps:
       - id: meta
-        uses: dependabot/fetch-metadata@v3
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
       - if: >-
           !(contains(format(', {0}, ', steps.meta.outputs.dependency-names), ', lit, ')
           && steps.meta.outputs.update-type == 'version-update:semver-major')

@@ -36,3 +36,16 @@ updates:
     groups:
       actions:
         patterns: ['*']
+
+  # Le verrou de la documentation (`requirements_docs.txt`, épinglé par
+  # empreinte et compilé depuis `requirements_docs.in`).
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore(docs)
+    groups:
+      documentation:
+        patterns: ['*']
