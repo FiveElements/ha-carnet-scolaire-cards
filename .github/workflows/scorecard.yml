@@ -1,0 +1,50 @@
+name: OpenSSF Scorecard
+
+# Évaluation des pratiques de sécurité du dépôt (protection de branche,
+# épinglage des actions, permissions des workflows, vulnérabilités connues…)
+# par l'OpenSSF. Aucun compte tiers, aucun secret : le résultat est signé par
+# le jeton OIDC du workflow et publié sur api.scorecard.dev, d'où le badge du
+# README le lit.
+#
+# Ce que le badge dit : une note sur dix, agrégée sur des vérifications
+# automatiques. Ce qu'il ne dit pas : que le code est sûr. C'est une mesure des
+# pratiques, pas un audit.
+#
+# `publish_results: true` impose des contraintes au workflow lui-même : pas de
+# `env` ni de `defaults` globaux, et uniquement des actions reconnues dans le
+# job d'analyse. Ne l'enrichissez pas d'autres étapes.
+
+on:
+  push:
+    branches: [main]
+  branch_protection_rule:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Analyse Scorecard
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: scorecard
+          path: results.sarif
+          retention-days: 5
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif

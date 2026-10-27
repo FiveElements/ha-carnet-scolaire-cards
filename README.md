@@ -5,8 +5,13 @@
 ![Home Assistant 2026.9.0 minimum](https://img.shields.io/badge/Home%20Assistant-2026.9.0%2B-41BDF5?style=flat-square&logo=homeassistant&logoColor=white)
 [![validate](https://img.shields.io/github/actions/workflow/status/FiveElements/ha-carnet-scolaire-cards/validate.yml?branch=main&style=flat-square&label=validate)](https://github.com/FiveElements/ha-carnet-scolaire-cards/actions/workflows/validate.yml)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/FiveElements/ha-carnet-scolaire-cards/codeql.yml?branch=main&style=flat-square&label=CodeQL)](https://github.com/FiveElements/ha-carnet-scolaire-cards/actions/workflows/codeql.yml)
-[![MIT License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 [![HACS](https://img.shields.io/github/actions/workflow/status/FiveElements/ha-carnet-scolaire-cards/hacs.yml?branch=main&style=flat-square&label=HACS)](https://github.com/FiveElements/ha-carnet-scolaire-cards/actions/workflows/hacs.yml)
+[![Couverture des tests](https://img.shields.io/endpoint?url=https%3A%2F%2Ffiveelements.github.io%2Fha-carnet-scolaire-cards%2Fcoverage.json&style=flat-square)](https://github.com/FiveElements/ha-carnet-scolaire-cards/actions/workflows/docs.yml)
+[![Dependabot](https://img.shields.io/badge/Dependabot-activ%C3%A9-025E8C?style=flat-square&logo=dependabot&logoColor=white)](https://github.com/FiveElements/ha-carnet-scolaire-cards/blob/main/.github/dependabot.yml)
+[![Alertes CVE](https://img.shields.io/badge/alertes%20CVE-Dependabot-025E8C?style=flat-square&logo=github&logoColor=white)](https://github.com/FiveElements/ha-carnet-scolaire-cards/security)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FiveElements/ha-carnet-scolaire-cards/badge?style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/FiveElements/ha-carnet-scolaire-cards)
+[![Licence](https://img.shields.io/github/license/FiveElements/ha-carnet-scolaire-cards?style=flat-square&label=licence)](LICENSE)
+[![Téléchargements](https://img.shields.io/github/downloads/FiveElements/ha-carnet-scolaire-cards/total?style=flat-square&label=t%C3%A9l%C3%A9chargements)](https://github.com/FiveElements/ha-carnet-scolaire-cards/releases)
 
 
 [📖 Documentation](https://fiveelements.github.io/ha-carnet-scolaire-cards/) · [🔌 Carnet scolaire](https://github.com/FiveElements/ha-carnet-scolaire) · [🐛 Signaler un problème](https://github.com/FiveElements/ha-carnet-scolaire-cards/issues/new/choose)

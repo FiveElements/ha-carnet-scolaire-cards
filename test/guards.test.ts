@@ -276,6 +276,10 @@ describe('garde : aucune donnée réelle', () => {
     // boutons « Ajouter à mon Home Assistant » du README. L'URL ne porte que
     // le propriétaire et le nom du dépôt public.
     'my.home-assistant.io',
+    // Le badge OpenSSF Scorecard et sa page de détail. L'URL ne porte que le
+    // nom du dépôt public, comme les badges ci-dessus.
+    'api.scorecard.dev',
+    'scorecard.dev',
   ]);
 
   it('toutes les URL citées pointent vers un hôte autorisé', () => {
