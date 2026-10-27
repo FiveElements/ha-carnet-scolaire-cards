@@ -14,17 +14,19 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - run: pip install -r requirements_docs.txt
+      # Verrou à empreintes, généré depuis `requirements_docs.in` (voir l'en-tête
+      # du fichier) : pip refuse tout paquet dont l'archive ne correspond pas.
+      - run: pip install --require-hashes -r requirements_docs.txt
       - run: mkdocs build --strict
       # Couverture des tests, publiée avec la documentation sous la forme
       # qu'attend un badge img.shields.io « endpoint » : aucun service tiers,
       # aucun jeton. Le chiffre est celui des lignes de `src/` couvertes par
       # `npm test`, mesuré sur le commit qui publie la page.
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -37,7 +39,7 @@ jobs:
             const badge = { schemaVersion: 1, label: 'couverture', message: pct.toFixed(1) + ' %', color };
             require('fs').writeFileSync('site/coverage.json', JSON.stringify(badge));
           "
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site
   deploy:
@@ -50,5 +52,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/deploy-pages@v5
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
         id: deployment
