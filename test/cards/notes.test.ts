@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { HomeAssistant } from '../../src/core/ha-types';
 import { defineCard } from '../../src/core/registry';
 import { SPEC } from '../../src/cards/notes';
@@ -811,6 +811,34 @@ const faireOnglet = () => ({ opener: {} as unknown, location: { replace: vi.fn()
 const espionnerOuverture = (onglet: ReturnType<typeof faireOnglet>) =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- un onglet factice réduit aux trois membres que la carte emploie ; jsdom n'ouvre aucune fenêtre réelle à rendre à la place.
   vi.spyOn(window, 'open').mockReturnValue(onglet as unknown as Window);
+/** Fait répondre le relais avec `status`, ou échouer la sonde elle-même. */
+const repondreRelais = (status: number | 'reseau') => {
+  const sonde = vi.fn<typeof fetch>(() =>
+    status === 'reseau'
+      ? Promise.reject(new TypeError('Failed to fetch'))
+      : Promise.resolve(new Response('', { status }))
+  );
+  vi.stubGlobal('fetch', sonde);
+  return sonde;
+};
+/** Monte une note à un document, clique sa pastille, et rend la carte. */
+const cliquerDocument = async (role: 'subject' | 'correction') => {
+  const hass = noteAvec({
+    attachment_refs: [{ name: 'doc.pdf', kind: 'local', key: CLE, role }],
+  });
+  hass.callService = vi
+    .fn<HomeAssistant['callService']>()
+    .mockResolvedValue({ response: { url: 'https://demo.example.invalid/doc.pdf' } });
+  const el = await mountCard(
+    'carnet-scolaire-notes',
+    { device_id: 'dev_enfant', sections: ['latest'] },
+    hass
+  );
+  const bouton = el.shadowRoot?.querySelector('.devoirs-piece button');
+  expect(bouton).toBeInstanceOf(HTMLButtonElement);
+  if (bouton instanceof HTMLButtonElement) bouton.click();
+  return el;
+};
 
 
 describe('carte notes — min/max de la classe et documents du devoir', () => {
@@ -899,9 +927,14 @@ describe('carte notes — min/max de la classe et documents du devoir', () => {
     expect(el.shadowRoot?.querySelectorAll('.devoirs-pieces').length).toBe(0);
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('demande l’adresse au clic, et seulement au clic, puis l’ouvre', async () => {
     const onglet = faireOnglet();
     const ouvrir = espionnerOuverture(onglet);
+    const sonde = repondreRelais(200);
     const hass = noteAvec({
       attachment_refs: [{ name: 'sujet.pdf', kind: 'local', key: CLE, role: 'subject' }],
     });
@@ -932,6 +965,50 @@ describe('carte notes — min/max de la classe et documents du devoir', () => {
       true
     );
     expect(onglet.opener).toBeNull();
+    // La sonde a interrogé la même adresse avant de la confier à l'onglet.
+    expect(sonde).toHaveBeenCalledWith('https://demo.example.invalid/sujet.pdf', expect.anything());
+    ouvrir.mockRestore();
+  });
+
+  it('dit « Sujet indisponible » quand le relais refuse le sujet, sans ouvrir l’onglet', async () => {
+    const onglet = faireOnglet();
+    const ouvrir = espionnerOuverture(onglet);
+    repondreRelais(502);
+    const el = await cliquerDocument('subject');
+    await vi.waitFor(() => {
+      expect(el.shadowRoot?.querySelector('.devoirs-piece-etat')?.textContent).toBe(
+        'Sujet indisponible'
+      );
+    });
+    expect(onglet.close).toHaveBeenCalled();
+    expect(onglet.location.replace).not.toHaveBeenCalled();
+    ouvrir.mockRestore();
+  });
+
+  it('nomme le corrigé quand c’est lui que le relais refuse', async () => {
+    const onglet = faireOnglet();
+    const ouvrir = espionnerOuverture(onglet);
+    repondreRelais(502);
+    const el = await cliquerDocument('correction');
+    await vi.waitFor(() => {
+      expect(el.shadowRoot?.querySelector('.devoirs-piece-etat')?.textContent).toBe(
+        'Corrigé indisponible'
+      );
+    });
+    expect(onglet.location.replace).not.toHaveBeenCalled();
+    ouvrir.mockRestore();
+  });
+
+  it('ouvre quand même le document si la sonde elle-même échoue', async () => {
+    const onglet = faireOnglet();
+    const ouvrir = espionnerOuverture(onglet);
+    repondreRelais('reseau');
+    const el = await cliquerDocument('subject');
+    await vi.waitFor(() => {
+      expect(onglet.location.replace).toHaveBeenCalledWith('https://demo.example.invalid/doc.pdf');
+    });
+    expect(onglet.close).not.toHaveBeenCalled();
+    expect(el.shadowRoot?.querySelector('.devoirs-piece-etat')?.textContent ?? '').toBe('');
     ouvrir.mockRestore();
   });
 

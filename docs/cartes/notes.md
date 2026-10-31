@@ -86,6 +86,13 @@ attribut. Ces pastilles n'apparaissent qu'avec une version de
 l'intégration qui publie `attachment_refs` sur les notes. Avant, la ligne
 s'affiche simplement sans elles.
 
+Avant d'ouvrir l'onglet, la carte vérifie que le document répond bien. S'il
+ne répond pas, elle affiche « Sujet indisponible » ou « Corrigé
+indisponible » sous les pastilles plutôt qu'un onglet d'erreur. Certains
+établissements refusent toujours le sujet d'un devoir noté et servent le
+corrigé : la pastille « Sujet » reste affichée, parce qu'elle fonctionne
+ailleurs.
+
 ## Ranger les notes par matière
 
 Quand `latest` et `subjects` sont affichées ensemble, avec ou sans filtre,

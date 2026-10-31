@@ -279,7 +279,11 @@ export const SPEC: CardSpec<Config> = {
     const grouped = wanted.includes('latest') && wanted.includes('subjects');
     const appareil = typeof c.device_id === 'string' ? c.device_id : '';
     const origine = instanceOrigin(ctx.hass);
-    const ouvrirDocument = async (cle: string, bouton: HTMLButtonElement): Promise<void> => {
+    const ouvrirDocument = async (
+      cle: string,
+      role: GradeDocument['role'],
+      bouton: HTMLButtonElement
+    ): Promise<void> => {
       const etat = bouton.closest('.devoirs-pieces')?.querySelector('.devoirs-piece-etat');
       if (etat) etat.textContent = '';
       bouton.disabled = true;
@@ -290,6 +294,15 @@ export const SPEC: CardSpec<Config> = {
           unknown: ctx.t('notes.attachment_unknown'),
           failed: ctx.t('devoirs.attachment_failed'),
           blocked: ctx.t('devoirs.attachment_blocked'),
+          // Nommer le document refusé : sur un établissement, le sujet échoue
+          // toujours et le corrigé jamais, et « Sujet indisponible » le dit
+          // sans laisser croire que tout le devoir est perdu.
+          unavailable:
+            role === 'subject'
+              ? ctx.t('notes.document_subject_unavailable')
+              : role === 'correction'
+                ? ctx.t('notes.document_correction_unavailable')
+                : ctx.t('notes.document_unavailable'),
         });
       } finally {
         bouton.disabled = false;
@@ -320,7 +333,7 @@ export const SPEC: CardSpec<Config> = {
                     @click=${(event: Event): void => {
                       const bouton = event.currentTarget;
                       if (bouton instanceof HTMLButtonElement && d.key) {
-                        void ouvrirDocument(d.key, bouton);
+                        void ouvrirDocument(d.key, d.role, bouton);
                       }
                     }}
                   >
