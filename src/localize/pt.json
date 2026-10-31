@@ -122,6 +122,9 @@
     "document_subject": "Enunciado",
     "document_correction": "Correção",
     "document_open": "Abrir o documento",
+    "document_subject_unavailable": "Enunciado indisponível",
+    "document_correction_unavailable": "Correção indisponível",
+    "document_unavailable": "Documento indisponível",
     "attachment_not_collected": "Este documento ainda não está disponível: a recolha das notas ainda não ocorreu.",
     "attachment_unknown": "Este documento já não está nas notas publicadas. Atualize a página e tente novamente."
   },

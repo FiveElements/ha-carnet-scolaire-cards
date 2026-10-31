@@ -147,7 +147,46 @@ export interface AttachmentMessages {
   unknown: string;
   failed: string;
   blocked: string;
+  /**
+   * La phrase quand le relais répond par une erreur. **Sa présence active la
+   * sonde** (voir `joignable`) : sans elle, l'onglet reçoit l'adresse sans
+   * vérification, comme avant.
+   */
+  unavailable?: string;
 }
+
+/**
+ * Le relais répond-il par un document ? `true` ou `false` quand il a
+ * répondu, `undefined` quand on n'a pas pu le savoir.
+ *
+ * Demandé par la session de l'intégration le 6 octobre 2026 : sur un
+ * établissement, PRONOTE refuse toujours le sujet d'un devoir noté et sert
+ * le corrigé. Le relais répond alors 502 avec un message `text/plain`, que
+ * l'onglet affichait tel quel, en anglais, à la place du document.
+ *
+ * La sonde est un GET, pas un HEAD : la vue du relais n'est déclarée que pour
+ * GET. Elle **abandonne le corps** dès que l'en-tête est arrivé, donc un
+ * document lourd n'est pas lu deux fois. Le relais garde les octets en
+ * mémoire après un succès : l'onglet qui suit ne coûte aucune requête
+ * PRONOTE de plus.
+ *
+ * Une sonde qui échoue elle-même (réseau, CORS depuis le tableau de bord
+ * Cast, servi depuis une origine tierce) rend `undefined`, et l'appelant
+ * ouvre l'onglet quand même. Seul un refus **mesuré** retient le document :
+ * la sonde peut ajouter un message, elle ne doit jamais retirer un document
+ * qui se serait ouvert.
+ */
+const joignable = async (url: string): Promise<boolean | undefined> => {
+  const arret = new AbortController();
+  try {
+    const reponse = await fetch(url, { signal: arret.signal });
+    return reponse.ok;
+  } catch {
+    return undefined;
+  } finally {
+    arret.abort();
+  }
+};
 
 /**
  * Ouvre une pièce de type fichier : demande son adresse au service, au
@@ -192,10 +231,14 @@ export const openAttachment = async (
         ? openableUrl(champ(reponse, 'url'), origin)
         : undefined;
     if (url !== undefined && onglet) {
-      onglet.location.replace(url);
-      return undefined;
+      if (messages.unavailable === undefined || (await joignable(url)) !== false) {
+        onglet.location.replace(url);
+        return undefined;
+      }
+      message = messages.unavailable;
+    } else {
+      message = url === undefined ? messages.failed : messages.blocked;
     }
-    message = url === undefined ? messages.failed : messages.blocked;
   } catch (erreur) {
     message = messageDeRefus(erreur, messages);
   }

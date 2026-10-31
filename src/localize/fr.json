@@ -122,6 +122,9 @@
     "document_subject": "Sujet",
     "document_correction": "Corrigé",
     "document_open": "Ouvrir le document",
+    "document_subject_unavailable": "Sujet indisponible",
+    "document_correction_unavailable": "Corrigé indisponible",
+    "document_unavailable": "Document indisponible",
     "attachment_not_collected": "Ce document n’est pas encore disponible : la collecte des notes n’a pas encore eu lieu.",
     "attachment_unknown": "Ce document n’est plus dans les notes publiées. Rafraîchissez la page et réessayez."
   },
