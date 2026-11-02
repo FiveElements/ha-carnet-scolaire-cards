@@ -23,7 +23,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "fast-check": "^4.10.2",
     "happy-dom": "^21.0.4",
-    "oxlint": "^1.89.0",
+    "oxlint": "^1.90.0",
     "oxlint-tsgolint": "^7.0.2005",
     "prettier": "^3.9.10",
     "typescript": "^7.0.2",
