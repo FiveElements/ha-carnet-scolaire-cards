@@ -238,5 +238,18 @@
     "day_offset_helper": "Zero mostra hoje, 1 amanhã, -1 ontem. Vários cartões com desvios diferentes formam uma janela deslizante. Qualquer dia que não seja hoje lê-se na semana recolhida.",
     "card_day": "Dia do cartão",
     "out_of_window": "Este dia não está na semana recolhida: o cartão não sabe o que contém. Aproxime o desvio ou active o nível semanal nas opções da integração."
+  },
+  "agenda": {
+    "name": "Agenda do estabelecimento",
+    "empty": "Nenhum evento previsto.",
+    "empty_without_holidays": "Nenhum evento previsto além das férias.",
+    "on_day": "A {date}",
+    "on_day_at": "A {date} às {time}",
+    "on_day_time": "A {date} das {start} às {end}",
+    "from_to": "De {start} a {end}",
+    "from_to_time": "De {start} às {start_time} a {end} às {end_time}",
+    "limit": "Número de eventos",
+    "show_holidays": "Mostrar férias e feriados",
+    "show_category": "Mostrar categoria e destinatários"
   }
 }

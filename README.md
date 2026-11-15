@@ -29,6 +29,7 @@
 - 📝 les devoirs
 - 📊 les notes
 - 🎯 les évaluations
+- 🗓️ l'agenda de l'établissement
 - 🍽️ le menu de cantine
 - 🏫 la vie scolaire
 - 👨‍🎓 les informations de l'élève
@@ -113,6 +114,12 @@ côte font une **[fenêtre glissante sur la semaine](https://fiveelements.github
  ### 🎯 [Évaluations](https://fiveelements.github.io/ha-carnet-scolaire-cards/cartes/evaluations/)
 
  Permet d'afficher les évaluations et les informations de compétences fournies par l'établissement.
+
+---
+
+ ### 🗓️ [Agenda](https://fiveelements.github.io/ha-carnet-scolaire-cards/cartes/agenda/)
+
+ Affiche l'agenda de l'établissement : arrêt des notes, conseils de classe, réunions et vacances, avec la couleur de chaque famille d'évènements.
 
 ---
 

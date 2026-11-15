@@ -28,6 +28,7 @@ programme.*
 | [Devoirs](cartes/devoirs.md) | Les devoirs à faire, avec échéance et matière |
 | [Notes](cartes/notes.md) | Moyennes, dernières notes et moyennes par matière |
 | [Évaluations](cartes/evaluations.md) | Les évaluations par compétences, avec leur niveau de maîtrise |
+| [Agenda](cartes/agenda.md) | L'agenda de l'établissement : arrêt des notes, conseils de classe, vacances |
 | [Cantine](cartes/menu.md) | Le menu du jour ou du lendemain, plat par plat |
 | [Vie scolaire](cartes/vie-scolaire.md) | Absences, retards et punitions |
 | [Limiteur](cartes/limiteur.md) | Budget d'appels, état du limiteur, bouton de rafraîchissement |

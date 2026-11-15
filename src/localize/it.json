@@ -238,5 +238,18 @@
     "day_offset_helper": "Zero mostra oggi, 1 domani, -1 ieri. Più schede con scostamenti diversi formano una finestra scorrevole. Ogni giorno diverso da oggi si legge nella settimana raccolta.",
     "card_day": "Giorno della scheda",
     "out_of_window": "Questo giorno non è nella settimana raccolta: la scheda non sa cosa contiene. Avvicini lo scostamento o attivi il livello settimanale nelle opzioni dell'integrazione."
+  },
+  "agenda": {
+    "name": "Agenda dell'istituto",
+    "empty": "Nessun evento in programma.",
+    "empty_without_holidays": "Nessun evento in programma oltre alle vacanze.",
+    "on_day": "Il {date}",
+    "on_day_at": "Il {date} alle {time}",
+    "on_day_time": "Il {date} dalle {start} alle {end}",
+    "from_to": "Dal {start} al {end}",
+    "from_to_time": "Dal {start} alle {start_time} al {end} alle {end_time}",
+    "limit": "Numero di eventi",
+    "show_holidays": "Mostra vacanze e festivi",
+    "show_category": "Mostra categoria e destinatari"
   }
 }
