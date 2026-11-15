@@ -238,5 +238,18 @@
     "day_offset_helper": "Zéro affiche aujourd'hui, 1 demain, -1 la veille. Plusieurs cartes avec des décalages différents forment une fenêtre glissante. Tout jour autre qu'aujourd'hui se lit dans la semaine collectée.",
     "card_day": "Jour de la carte",
     "out_of_window": "Ce jour n'est pas dans la semaine collectée : la carte ne sait pas ce qu'il contient. Rapprochez le décalage, ou activez le palier hebdomadaire dans les options de l'intégration."
+  },
+  "agenda": {
+    "name": "Agenda de l'établissement",
+    "empty": "Aucun évènement à venir.",
+    "empty_without_holidays": "Aucun évènement à venir en dehors des vacances.",
+    "on_day": "Le {date}",
+    "on_day_at": "Le {date} à {time}",
+    "on_day_time": "Le {date} de {start} à {end}",
+    "from_to": "Du {start} au {end}",
+    "from_to_time": "Du {start} à {start_time} au {end} à {end_time}",
+    "limit": "Nombre d'évènements",
+    "show_holidays": "Afficher les vacances et jours fériés",
+    "show_category": "Afficher la catégorie et le public"
   }
 }

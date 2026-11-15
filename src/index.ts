@@ -16,6 +16,7 @@ import { SPEC as LIMITEUR } from './cards/limiteur';
 import { SPEC as MODE_COLLECTE } from './cards/mode-collecte';
 import { SPEC as EVALUATIONS } from './cards/evaluations';
 import { SPEC as JOURNEE } from './cards/journee';
+import { SPEC as AGENDA } from './cards/agenda';
 
 defineCard(PROCHAIN_COURS);
 defineCard(EMPLOI_DU_TEMPS);
@@ -28,6 +29,7 @@ defineCard(LIMITEUR);
 defineCard(MODE_COLLECTE);
 defineCard(EVALUATIONS);
 defineCard(JOURNEE);
+defineCard(AGENDA);
 
 export { defineCard };
 export type { CardSpec, RenderCtx, CarnetCardConfig, EntityKey } from './core/types';

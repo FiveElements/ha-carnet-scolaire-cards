@@ -238,5 +238,18 @@
     "day_offset_helper": "Cero muestra hoy, 1 mañana, -1 ayer. Varias tarjetas con desplazamientos distintos forman una ventana deslizante. Cualquier día que no sea hoy se lee en la semana recopilada.",
     "card_day": "Día de la tarjeta",
     "out_of_window": "Este día no está en la semana recopilada: la tarjeta no sabe qué contiene. Acerque el desplazamiento o active el nivel semanal en las opciones de la integración."
+  },
+  "agenda": {
+    "name": "Agenda del centro",
+    "empty": "No hay eventos próximos.",
+    "empty_without_holidays": "No hay eventos próximos aparte de las vacaciones.",
+    "on_day": "El {date}",
+    "on_day_at": "El {date} a las {time}",
+    "on_day_time": "El {date} de {start} a {end}",
+    "from_to": "Del {start} al {end}",
+    "from_to_time": "Del {start} a las {start_time} al {end} a las {end_time}",
+    "limit": "Número de eventos",
+    "show_holidays": "Mostrar vacaciones y festivos",
+    "show_category": "Mostrar categoría y destinatarios"
   }
 }

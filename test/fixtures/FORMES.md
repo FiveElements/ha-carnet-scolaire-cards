@@ -526,6 +526,38 @@ l'intégration — la bonne provenance, mais pas une observation :
 Quand vous vérifiez une de ces formes sur une instance où elle est renseignée,
 mettez la ligne à jour ici.
 
+## L'agenda de l'établissement — un contrat, pas encore une observation
+
+`sensor:next_school_event` (palier `agenda`) n'existait sur aucune instance
+quand la carte agenda a été écrite. Sa forme est le **contrat figé avec le
+backend le 15 novembre 2026**. Relevée le même jour sur une instance réelle
+(intégration 0.1.28, 9 éléments, types seulement) : les clés et leurs types
+sont conformes, `start`/`end` font 10 caractères en journée entière et 25
+sinon, `audience` est absent des vacances. Revérifié avec l'intégration
+0.1.31 : 7 éléments sur 9 ont `is_holiday` vrai (le genre PRONOTE des
+vacances et jours fériés). **`category` est `null` pour les vacances et les
+conseils de classe** : c'est le libellé de la famille dont la couleur est
+celle de l'élément, et ces deux-là n'en ont aucune. Une vacance se reconnaît
+donc à `is_holiday`, jamais à `category` — ce que fait la carte.
+
+- **État** : `device_class: timestamp`, le début du premier évènement à venir
+  dont `is_holiday` est faux. `unknown` quand il ne reste que des vacances,
+  alors que `items` n'est pas vide. `fetched_at` et `stale` sont présents dès
+  la première collecte, y compris dans ce cas.
+- **`items`** : les évènements dont la fin est après le moment de la collecte,
+  triés par début, 50 au plus. Un évènement commencé reste jusqu'à sa fin.
+  Chacun porte :
+  - `key` : clé stable, jamais le `N` de PRONOTE ;
+  - `title` ; `category`, le libellé brut de la famille PRONOTE (libre et
+    propre à l'établissement : ne le comparez jamais à une chaîne) ;
+  - `all_day` ; `start` et `end` — **date seule `AAAA-MM-JJ` quand `all_day`
+    est vrai, `end` EXCLUSIVE** (le lendemain du dernier jour, comme dans le
+    calendrier de Home Assistant) ; ISO 8601 complet avec décalage sinon ;
+  - `color` : `#rrggbb` en minuscules, ou `null` ;
+  - `is_class_council`, `is_holiday` : booléens ;
+  - `location`, `description` ; `audience`, les publics joints par « , »,
+    **absent** de l'élément quand PRONOTE ne le donne pas.
+
 ## La cantine — trois pièges, tous mesurés dans la source
 
 Relevés dans `sensor.py` et `gateway.py` de l'intégration, avec les lignes,
